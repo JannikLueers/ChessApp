@@ -1,4 +1,4 @@
-// Main Application Controller with Play, Analysis, Saved Games & Puzzles Sequence Transition Engine
+// Main Application Controller with Humanized Stockfish ELO Scaling
 document.addEventListener('DOMContentLoaded', () => {
     // Core Engine Instances
     const chess = new Chess();
@@ -250,16 +250,57 @@ document.addEventListener('DOMContentLoaded', () => {
         return false;
     }
 
-    // AI Bot Move Logic
+    // AI Bot Move Logic with Humanized ELO Scaling
     function makeAIMove() {
         if (chess.game_over()) return;
 
-        const depth = parseInt(selectDifficulty.value, 10);
-        engine.evaluatePosition(chess.fen(), depth, (evalRes) => {
-            if (evalRes.bestMove) {
-                const from = evalRes.bestMove.substring(0, 2);
-                const to = evalRes.bestMove.substring(2, 4);
-                const promo = evalRes.bestMove.substring(4, 5);
+        const diffLevel = parseInt(selectDifficulty.value, 10);
+        let skillLevel = 20;
+        let targetElo = 2500;
+        let searchDepth = 12;
+        let multiPV = 1;
+
+        if (diffLevel === 1) { // Beginner (~800 ELO) - Fully Winnable
+            skillLevel = 0;
+            targetElo = 800;
+            searchDepth = 2;
+            multiPV = 3;
+        } else if (diffLevel === 4) { // Intermediate (~1400 ELO)
+            skillLevel = 6;
+            targetElo = 1400;
+            searchDepth = 4;
+            multiPV = 2;
+        } else if (diffLevel === 8) { // Advanced (~1800 ELO)
+            skillLevel = 12;
+            targetElo = 1800;
+            searchDepth = 8;
+            multiPV = 1;
+        } else { // Grandmaster (2500+ ELO)
+            skillLevel = 20;
+            targetElo = 2500;
+            searchDepth = 14;
+            multiPV = 1;
+        }
+
+        engine.setSkillLevel(skillLevel, targetElo);
+
+        engine.evaluatePosition(chess.fen(), searchDepth, (evalRes) => {
+            let chosenMove = evalRes.bestMove;
+
+            // Controlled Move Sampling for Beginner/Intermediate to make 800 ELO winnable & human-like
+            if (diffLevel === 1 && evalRes.multipv && evalRes.multipv.length > 1) {
+                const rand = Math.random();
+                if (rand > 0.65 && evalRes.multipv[1]) {
+                    chosenMove = evalRes.multipv[1]; // 35% chance to pick 2nd candidate move
+                } else if (rand > 0.85 && evalRes.multipv[2]) {
+                    chosenMove = evalRes.multipv[2]; // 15% chance to pick 3rd candidate move
+                }
+            }
+
+            if (chosenMove) {
+                const from = chosenMove.substring(0, 2);
+                const to = chosenMove.substring(2, 4);
+                const promo = chosenMove.substring(4, 5);
 
                 const moveObj = chess.move({ from, to, promotion: promo || 'q' });
                 if (moveObj) {
@@ -272,7 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     triggerEngineEvaluation(moveObj);
                 }
             }
-        });
+        }, multiPV);
     }
 
     // Stockfish Evaluation & Hint Overlay
@@ -543,7 +584,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 puzzleDescription.innerHTML = `<span style="color: var(--accent-emerald); font-weight: 800;">🎉 EXCELLENT! Puzzle Solved! Loading next puzzle...</span>`;
                 puzzleScoreBadge.textContent = `Solved: ${puzzleManager.score.solved} | Failed: ${puzzleManager.score.failed}`;
                 
-                // AUTOMATIC TRANSITION TO NEXT PUZZLE IN 1.5 SECONDS
                 autoNextTimeout = setTimeout(() => {
                     loadNextPuzzleInSequence();
                 }, 1500);
@@ -558,7 +598,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 400);
             }
         } else {
-            // INCORRECT MOVE -> STOCKFISH REFUTATION
             isPuzzleLocked = true;
             const playedMoveObj = chess.move({ from, to, promotion: 'q' });
             sounds.playBlunder();

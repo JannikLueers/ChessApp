@@ -1,9 +1,9 @@
-// Stockfish Engine Worker Manager & Evaluation Processor
+// Stockfish Engine Worker Manager with UCI Skill Level & Elo Tuning
 class StockfishEngine {
     constructor() {
         this.worker = null;
         this.isReady = false;
-        this.currentEval = { score: 0, isMate: false, mateIn: 0, bestMove: null };
+        this.currentEval = { score: 0, isMate: false, mateIn: 0, bestMove: null, multipv: [] };
         this.onEvalCallback = null;
         this.init();
     }
@@ -25,9 +25,21 @@ class StockfishEngine {
         }
     }
 
-    evaluatePosition(fen, depth = 12, callback = null) {
+    // Set UCI Engine Skill Level (0 = ~800 ELO, 20 = Max Grandmaster)
+    setSkillLevel(skillLevel = 20, targetElo = 2500) {
+        this.send(`setoption name Skill Level value ${skillLevel}`);
+        this.send(`setoption name UCI_LimitStrength value true`);
+        this.send(`setoption name UCI_Elo value ${targetElo}`);
+    }
+
+    evaluatePosition(fen, depth = 12, callback = null, multiPVCount = 1) {
         if (callback) this.onEvalCallback = callback;
         this.send('stop');
+        if (multiPVCount > 1) {
+            this.send(`setoption name MultiPV value ${multiPVCount}`);
+        } else {
+            this.send(`setoption name MultiPV value 1`);
+        }
         this.send(`position fen ${fen}`);
         this.send(`go depth ${depth}`);
     }
@@ -45,7 +57,6 @@ class StockfishEngine {
 
             if (cpMatch) {
                 const cp = parseInt(cpMatch[1], 10);
-                // Convert to White's perspective advantage (+ equals White advantage)
                 this.currentEval.score = (cp / 100).toFixed(1);
                 this.currentEval.isMate = false;
                 this.currentEval.mateIn = 0;
@@ -57,7 +68,11 @@ class StockfishEngine {
             }
 
             if (pvMatch) {
-                this.currentEval.bestMove = pvMatch[1]; // e.g. 'e2e4'
+                const move = pvMatch[1];
+                if (!this.currentEval.multipv.includes(move)) {
+                    this.currentEval.multipv.push(move);
+                }
+                this.currentEval.bestMove = move;
             }
 
             if (this.onEvalCallback) {
@@ -65,7 +80,6 @@ class StockfishEngine {
             }
         }
 
-        // Parse bestmove line: e.g. "bestmove e2e4 ponder e7e5"
         if (msg.startsWith('bestmove')) {
             const parts = msg.split(' ');
             const move = parts[1];
@@ -78,12 +92,9 @@ class StockfishEngine {
         }
     }
 
-    // Classify move quality based on evaluation loss (cp drop)
     static classifyMove(prevEvalScore, newEvalScore, isWhiteTurn) {
         const p1 = parseFloat(prevEvalScore) || 0;
         const p2 = parseFloat(newEvalScore) || 0;
-        
-        // Change in advantage for the player who made the move
         const delta = isWhiteTurn ? (p2 - p1) : (p1 - p2);
 
         if (delta >= -0.2) return { label: 'Best Move', badgeClass: 'badge-best', icon: '🌟' };
