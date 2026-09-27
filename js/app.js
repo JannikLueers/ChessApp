@@ -1,4 +1,4 @@
-// Main Application Controller with Play, Analysis, Saved Games & Puzzles Refutation Engine
+// Main Application Controller with Play, Analysis, Saved Games & Puzzles Sequence Transition Engine
 document.addEventListener('DOMContentLoaded', () => {
     // Core Engine Instances
     const chess = new Chess();
@@ -72,6 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Puzzle Lock State
     let isPuzzleLocked = false;
+    let autoNextTimeout = null;
 
     // Board Renderer Initialization
     const boardRenderer = new BoardRenderer(boardEl, svgOverlayEl, {
@@ -89,6 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
         prevEvalScore = 0;
         selectedSquare = null;
         isPuzzleLocked = false;
+        if (autoNextTimeout) clearTimeout(autoNextTimeout);
         boardRenderer.clearArrows();
         updateUI();
         triggerEngineEvaluation();
@@ -447,15 +449,28 @@ document.addEventListener('DOMContentLoaded', () => {
         triggerEngineEvaluation(lastMoveObj);
     }
 
-    // --- Puzzles Engine Mode with Stockfish Refutation ---
+    // --- Puzzles Engine Mode with Automatic Next Puzzle Transition ---
     function loadNextPuzzle() {
         const cat = selectPuzzleCategory.value;
         const rat = parseInt(selectPuzzleRating.value, 10);
 
         const p = puzzleManager.getRandomPuzzle(cat, rat);
+        displayPuzzle(p);
+    }
+
+    function loadNextPuzzleInSequence() {
+        const cat = selectPuzzleCategory.value;
+        const rat = parseInt(selectPuzzleRating.value, 10);
+
+        const p = puzzleManager.getNextPuzzleInSequence(cat, rat);
+        displayPuzzle(p);
+    }
+
+    function displayPuzzle(p) {
         chess.load(p.fen);
         selectedSquare = null;
         isPuzzleLocked = false;
+        if (autoNextTimeout) clearTimeout(autoNextTimeout);
 
         isFlipped = (chess.turn() === 'b');
         boardRenderer.setFlipped(isFlipped);
@@ -471,17 +486,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function retryCurrentPuzzle() {
         if (!puzzleManager.currentPuzzle) return;
         const p = puzzleManager.resetCurrentPuzzle();
-        chess.load(p.fen);
-        selectedSquare = null;
-        isPuzzleLocked = false;
-        boardRenderer.clearArrows();
-        puzzleDescription.innerHTML = `<strong>${p.title}</strong>: ${p.description}`;
-        updateUI();
+        displayPuzzle(p);
     }
 
     selectPuzzleCategory.addEventListener('change', loadNextPuzzle);
     selectPuzzleRating.addEventListener('change', loadNextPuzzle);
-    btnNextPuzzle.addEventListener('click', loadNextPuzzle);
+    btnNextPuzzle.addEventListener('click', loadNextPuzzleInSequence);
 
     btnPuzzleHint.addEventListener('click', () => {
         if (!puzzleManager.currentPuzzle || isPuzzleLocked) return;
@@ -530,8 +540,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (res.completed) {
                 sounds.playCheck();
-                puzzleDescription.innerHTML = `<span style="color: var(--accent-emerald); font-weight: 800;">🎉 EXCELLENT! Puzzle Solved Correctly!</span>`;
+                puzzleDescription.innerHTML = `<span style="color: var(--accent-emerald); font-weight: 800;">🎉 EXCELLENT! Puzzle Solved! Loading next puzzle...</span>`;
                 puzzleScoreBadge.textContent = `Solved: ${puzzleManager.score.solved} | Failed: ${puzzleManager.score.failed}`;
+                
+                // AUTOMATIC TRANSITION TO NEXT PUZZLE IN 1.5 SECONDS
+                autoNextTimeout = setTimeout(() => {
+                    loadNextPuzzleInSequence();
+                }, 1500);
+
             } else if (res.replyMove) {
                 setTimeout(() => {
                     const rFrom = res.replyMove.substring(0, 2);
@@ -542,13 +558,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 400);
             }
         } else {
-            // INCORRECT MOVE -> STOCKFISH REFUTATION DEMONSTRATION
+            // INCORRECT MOVE -> STOCKFISH REFUTATION
             isPuzzleLocked = true;
             const playedMoveObj = chess.move({ from, to, promotion: 'q' });
             sounds.playBlunder();
             updateUI();
 
-            // Ask Stockfish to find refutation punishment move
             engine.evaluatePosition(chess.fen(), 14, (evalRes) => {
                 let refutationSan = "punishment move";
                 if (evalRes.bestMove) {
