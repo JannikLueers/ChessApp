@@ -1,4 +1,4 @@
-// Board Renderer, Drag & Drop Handler, SVG Arrow Overlay & Quality Badges
+// Board Renderer, Drag & Drop Handler, SVG Arrow Overlay & State Manager
 class BoardRenderer {
     constructor(boardElement, svgOverlayElement, options = {}) {
         this.boardEl = boardElement;
@@ -61,6 +61,23 @@ class BoardRenderer {
     setFlipped(isFlipped) {
         this.flipped = isFlipped;
         this.setupBoardDOM();
+    }
+
+    clearHighlights() {
+        this.selectedSquare = null;
+        this.legalMoves = [];
+        this.lastMove = null;
+        this.inCheckSquare = null;
+        this.clearArrows();
+
+        const squares = this.boardEl.querySelectorAll('.square');
+        squares.forEach(sqEl => {
+            sqEl.classList.remove('selected', 'last-move', 'in-check');
+            const dot = sqEl.querySelector('.move-dot, .capture-ring');
+            if (dot) dot.remove();
+            const badge = sqEl.querySelector('.on-piece-badge');
+            if (badge) badge.remove();
+        });
     }
 
     renderBoard(chessInstance, highlights = {}) {

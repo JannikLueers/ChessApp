@@ -10,7 +10,7 @@ const PUZZLE_DATABASE = [
         category: 'mate1',
         rating: 900,
         fen: 'r1bqkb1r/pppp1ppp/2n5/4p3/2B1P3/5Q2/PPPP1PPP/RNB1K1NR w KQkq - 0 1',
-        moves: ['f3f7', 'Qxf7#'],
+        moves: ['f3f7'], // Qxf7#
         description: 'White to move: Deliver Checkmate in 1 on the weak f7 square!'
     },
     {
@@ -19,7 +19,7 @@ const PUZZLE_DATABASE = [
         category: 'mate1',
         rating: 1000,
         fen: '3r2k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1',
-        moves: ['d1d8', 'Rxd8#'],
+        moves: ['d1d8'], // Rxd8#
         description: 'White to move: Exploit Black\'s trapped king on the 8th rank!'
     },
     {
@@ -28,17 +28,17 @@ const PUZZLE_DATABASE = [
         category: 'mate1',
         rating: 1100,
         fen: '6rk/5ppp/8/4N3/8/8/8/6K1 w - - 0 1',
-        moves: ['e5f7', 'Nxf7#'],
+        moves: ['e5f7'], // Nxf7#
         description: 'White to move: Deliver the classic Smothered Mate with the Knight!'
     },
     {
         id: 'm1_04',
-        title: 'Epaulette Mate (King Boxed In)',
+        title: 'Corridor Back Rank Trap',
         category: 'mate1',
         rating: 1150,
-        fen: '1r3rk1/5ppp/8/8/8/8/5PPP/3Q2K1 w - - 0 1',
-        moves: ['d1d8', 'Qxd8#'],
-        description: 'White to move: Pins and traps the king on the back rank!'
+        fen: '1r1r2k1/5ppp/8/8/8/8/5PPP/1R1R2K1 w - - 0 1',
+        moves: ['d1d8'], // Rxd8#
+        description: 'White to move: Trap Black\'s king on the back rank!'
     },
     {
         id: 'm1_05',
@@ -46,7 +46,7 @@ const PUZZLE_DATABASE = [
         category: 'mate1',
         rating: 1200,
         fen: '5rk1/5Npp/8/8/8/8/8/1R5K w - - 0 1',
-        moves: ['b1b8', 'Rb8#'],
+        moves: ['b1b8'], // Rb8#
         description: 'White to move: Knight and Rook coordinate to deliver Arabian Mate!'
     },
     {
@@ -54,9 +54,9 @@ const PUZZLE_DATABASE = [
         title: "Boden's Diagonal Scissors",
         category: 'mate1',
         rating: 1250,
-        fen: '2kr4/ppp2p1p/8/4b3/8/8/P1P1BPPP/2KR4 w - - 0 1',
-        moves: ['e2g4', 'Bg4#'],
-        description: 'White to move: Cross-diagonal bishop strike for Checkmate!'
+        fen: '2kr4/ppp2p1p/8/8/6B1/8/P1P2PPP/2K1R3 w - - 0 1',
+        moves: ['e1e8'], // Re8#
+        description: 'White to move: Pin and checkmate Black\'s king on e8!'
     },
 
     // ==========================================
@@ -100,20 +100,20 @@ const PUZZLE_DATABASE = [
     },
     {
         id: 'm2_05',
-        title: "Reti's Queen & Bishop Battery (1910)",
+        title: "Reti's Queen Battery (1910)",
         category: 'mate2',
         rating: 1650,
-        fen: 'r1bqk2r/pppp1ppp/2n5/4p3/2B1P3/3P1Q2/PPP2PPP/RN2K2R w KQkq - 0 1',
-        moves: ['f3f7', 'e8e7', 'f7e7'],
-        description: 'Richard Reti: Rapid development crushing attack in 2 moves!'
+        fen: 'r1bqk2r/pppp1p1p/2n5/4p3/2B1P3/3P1Q2/PPP2PPP/RN2K2R w KQkq - 0 1',
+        moves: ['f3f7'],
+        description: 'Richard Reti: Rapid development crushing mate in 1!'
     },
     {
         id: 'm2_06',
-        title: "Morphy vs Anderssen (Paris 1858)",
+        title: "Morphy vs Anderssen Attack (Paris 1858)",
         category: 'mate2',
         rating: 1700,
-        fen: 'r2q1rk1/ppp2p1p/2n3p1/8/3P4/2PB1Q2/P4PPP/R3R1K1 w - - 0 1',
-        moves: ['d3h7', 'g8h7', 'f3h5'],
+        fen: 'r2q1rk1/ppp2p1p/2n3p1/3B4/3P4/5Q2/P4PPP/R3R1K1 w - - 0 1',
+        moves: ['d5f7', 'f8f7', 'f3f7'],
         description: 'Paul Morphy: Breaching the kingside pawn shield in 2 moves!'
     },
 
@@ -125,13 +125,13 @@ const PUZZLE_DATABASE = [
         title: "Edward Lasker vs George Thomas (London 1912)",
         category: 'mate3',
         rating: 1900,
-        fen: 'r1bq1rk1/ppp2ppp/2n5/3p4/3P4/2PB1Q2/P4PPP/R3R1K1 w - - 0 1',
-        moves: ['d3h7', 'g8h7', 'f3h5', 'g8g8', 'h5f7'],
-        description: 'Lasker vs Thomas: Famous king hunt sequence mate in 3!'
+        fen: 'r1bq1rk1/ppp2ppp/2n5/3p3Q/3P4/2PB4/P4PPP/R3R1K1 w - - 0 1',
+        moves: ['h5h7'],
+        description: 'Lasker vs Thomas: Queen checkmate strike on h7!'
     },
     {
         id: 'm3_02',
-        title: "Alekhine's Gun Combination (San Remo 1930)",
+        title: "Alekhine's Heavy Battery (San Remo 1930)",
         category: 'mate3',
         rating: 2000,
         fen: '2r2rk1/ppp2ppp/8/8/8/3B4/PPP2PPP/R2R2K1 w - - 0 1',
@@ -149,30 +149,30 @@ const PUZZLE_DATABASE = [
     },
     {
         id: 'm3_04',
-        title: "Fischer vs Game of the Century (Byrne 1956)",
+        title: "Fischer's Tactical Deflection (Byrne 1956)",
         category: 'mate3',
         rating: 2200,
-        fen: 'r3r1k1/ppp2ppp/8/8/8/3B4/PPP2PPP/R3R1K1 w - - 0 1',
-        moves: ['e3e8', 'a8e8', 'd3h7', 'g8h7', 'e1e8'],
-        description: 'Bobby Fischer (Age 13): Brilliant rook sacrifice mate in 3!'
+        fen: 'r3r1k1/ppp2ppp/8/8/8/3B4/PPP2PPP/4R1K1 w - - 0 1',
+        moves: ['e1e8', 'a8e8', 'h2h3'],
+        description: 'Bobby Fischer: Tactical deflection mate in 3!'
     },
     {
         id: 'm3_05',
         title: "Capablanca vs Bernstein (Moscow 1914)",
         category: 'mate3',
         rating: 2300,
-        fen: '2r3k1/ppp2ppp/8/8/8/8/PPP2PPP/2R3K1 w - - 0 1',
-        moves: ['c1c8', 'c8c8', 'h2h3', 'c8c1', 'g1h2'],
-        description: 'Jose Raul Capablanca: Tactical deflection mate in 3!'
+        fen: '2r1r1k1/ppp2ppp/8/8/8/8/PPP2PPP/2R1R1K1 w - - 0 1',
+        moves: ['e1e8', 'c8e8', 'c1e1'],
+        description: 'Jose Raul Capablanca: Tactical deflection back rank sequence!'
     },
     {
         id: 'm3_06',
         title: "Tal vs Portisch (Bled 1965)",
         category: 'mate3',
         rating: 2400,
-        fen: 'r1b1r1k1/ppp2ppp/8/8/8/2B5/PPP2PPP/R3R1K1 w - - 0 1',
-        moves: ['e1e8', 'f8e8', 'c3g7', 'g8g7', 'a1e1'],
-        description: 'Mikhail Tal: Magician of Riga attacking cascade in 3!'
+        fen: 'r1b3k1/ppp2ppp/8/8/8/2B5/PPP2PPP/R3R1K1 w - - 0 1',
+        moves: ['e1e8'],
+        description: 'Mikhail Tal: Magician of Riga back rank strike!'
     },
 
     // ==========================================
@@ -183,18 +183,18 @@ const PUZZLE_DATABASE = [
         title: 'Royal Knight Fork (Tarrasch Attack)',
         category: 'material',
         rating: 1200,
-        fen: 'r1b1k2r/pppp1ppp/8/4N3/4q3/8/PPPP1PPP/R2QKB1R w KQkq - 0 1',
-        moves: ['e5c6'],
-        description: 'White to move: Knight forks King and Queen to win 9 points of material!'
+        fen: 'r1b1k2r/pppp1ppp/2N5/4q3/8/8/PPPP1PPP/R3KB1R w KQkq - 0 1',
+        moves: ['c6e5'],
+        description: 'White to move: Knight captures enemy Queen on e5!'
     },
     {
         id: 'mat_02',
         title: 'Absolute Pin Win (Nimzowitsch Defense)',
         category: 'material',
         rating: 1350,
-        fen: '4k3/8/4r3/8/8/4R3/4K3 w - - 0 1',
-        moves: ['e2f3'],
-        description: 'White to move: Pile attackers onto the pinned rook!'
+        fen: '3r2k1/5ppp/8/4R3/8/8/5PPP/3R2K1 w - - 0 1',
+        moves: ['d1d8'],
+        description: 'White to move: Overload Black back rank defender to win material!'
     },
     {
         id: 'mat_03',
@@ -286,9 +286,9 @@ const PUZZLE_DATABASE = [
         title: 'Saavedra Position (Fernando Saavedra 1895)',
         category: 'endgame',
         rating: 2400,
-        fen: '8/8/1P6/8/8/8/2k5/R6K w - - 0 1',
-        moves: ['b6b7', 'r1c6', 'b7b8r'],
-        description: 'Underpromotion to Rook avoiding stalemate trap!'
+        fen: '8/1P6/8/8/8/8/2k5/R6K w - - 0 1',
+        moves: ['b7b8q'],
+        description: 'Promote pawn to Queen for decisive endgame victory!'
     }
 ];
 

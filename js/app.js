@@ -1,8 +1,14 @@
-// Main Application Controller with Humanized Stockfish ELO Scaling
+// Main Application Controller with Isolated Master Hint Engine & Humanized Bot Engine
 document.addEventListener('DOMContentLoaded', () => {
     // Core Engine Instances
     const chess = new Chess();
-    const engine = new StockfishEngine();
+    
+    // Dedicated Master Engine for Hints, Eval Bar & Analysis (Always 100% Master Strength)
+    const evalEngine = new StockfishEngine();
+    
+    // Dedicated Bot Engine for Playing Opponent Moves (Adjustable ELO & Blunder Rates)
+    const botEngine = new StockfishEngine();
+    
     const puzzleManager = new PuzzleManager();
 
     // DOM Elements
@@ -80,7 +86,9 @@ document.addEventListener('DOMContentLoaded', () => {
         onPieceDrop: handlePieceDrop
     });
 
-    // Startup
+    // Startup: Ensure Master Eval Engine is locked at full power
+    evalEngine.setSkillLevel(20, 3000);
+
     populateSavedGamesDropdown();
     initGame();
 
@@ -91,15 +99,16 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedSquare = null;
         isPuzzleLocked = false;
         if (autoNextTimeout) clearTimeout(autoNextTimeout);
-        boardRenderer.clearArrows();
+        boardRenderer.clearHighlights();
         updateUI();
         triggerEngineEvaluation();
     }
 
-    // --- Tab Mode Switcher ---
+    // --- Tab Mode Switcher (Clean Reset of Board State) ---
     tabPlay.addEventListener('click', () => {
         currentMode = 'play';
         setActiveTab(tabPlay);
+        boardRenderer.clearHighlights();
         playControlsCard.style.display = 'block';
         analysisControlsCard.style.display = 'none';
         puzzlesControlsCard.style.display = 'none';
@@ -110,11 +119,11 @@ document.addEventListener('DOMContentLoaded', () => {
     tabAnalysis.addEventListener('click', () => {
         currentMode = 'analysis';
         setActiveTab(tabAnalysis);
+        boardRenderer.clearHighlights();
         playControlsCard.style.display = 'none';
         analysisControlsCard.style.display = 'block';
         puzzlesControlsCard.style.display = 'none';
         moveHistoryCard.style.display = 'flex';
-        boardRenderer.clearArrows();
 
         if (savedGames.length > 0 && !analyzedGame) {
             loadAnalyzedGame(savedGames[0]);
@@ -126,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
     tabPuzzles.addEventListener('click', () => {
         currentMode = 'puzzles';
         setActiveTab(tabPuzzles);
+        boardRenderer.clearHighlights();
         playControlsCard.style.display = 'none';
         analysisControlsCard.style.display = 'none';
         puzzlesControlsCard.style.display = 'block';
@@ -250,76 +260,102 @@ document.addEventListener('DOMContentLoaded', () => {
         return false;
     }
 
-    // AI Bot Move Logic with Humanized ELO Scaling
+    // AI Bot Move Logic (800 ELO is now super easy & winnable!)
     function makeAIMove() {
         if (chess.game_over()) return;
 
         const diffLevel = parseInt(selectDifficulty.value, 10);
-        let skillLevel = 20;
-        let targetElo = 2500;
-        let searchDepth = 12;
-        let multiPV = 1;
 
-        if (diffLevel === 1) { // Beginner (~800 ELO) - Fully Winnable
-            skillLevel = 0;
-            targetElo = 800;
-            searchDepth = 2;
-            multiPV = 3;
+        if (diffLevel === 1) { // Beginner (~800 ELO) - Accessible & Fun
+            botEngine.setSkillLevel(0, 700);
+            botEngine.evaluatePosition(chess.fen(), 1, (evalRes) => {
+                let chosenMove = evalRes.bestMove;
+                const legalMoves = chess.moves({ verbose: true });
+
+                // 35% chance to make an intentional passive/suboptimal move so player can win easily!
+                if (Math.random() < 0.35 && legalMoves.length > 0) {
+                    const randomMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+                    chosenMove = randomMove.from + randomMove.to;
+                }
+
+                if (chosenMove) {
+                    const from = chosenMove.substring(0, 2);
+                    const to = chosenMove.substring(2, 4);
+                    const promo = chosenMove.substring(4, 5);
+
+                    const moveObj = chess.move({ from, to, promotion: promo || 'q' });
+                    if (moveObj) {
+                        if (chess.in_check()) sounds.playCheck();
+                        else if (moveObj.captured) sounds.playCapture();
+                        else sounds.playMove();
+
+                        moveHistory.push(moveObj);
+                        updateUI();
+                        triggerEngineEvaluation(moveObj);
+                    }
+                }
+            }, 3);
         } else if (diffLevel === 4) { // Intermediate (~1400 ELO)
-            skillLevel = 6;
-            targetElo = 1400;
-            searchDepth = 4;
-            multiPV = 2;
+            botEngine.setSkillLevel(6, 1400);
+            botEngine.evaluatePosition(chess.fen(), 4, (evalRes) => {
+                if (evalRes.bestMove) {
+                    const from = evalRes.bestMove.substring(0, 2);
+                    const to = evalRes.bestMove.substring(2, 4);
+                    const promo = evalRes.bestMove.substring(4, 5);
+                    const moveObj = chess.move({ from, to, promotion: promo || 'q' });
+                    if (moveObj) {
+                        if (chess.in_check()) sounds.playCheck();
+                        else if (moveObj.captured) sounds.playCapture();
+                        else sounds.playMove();
+                        moveHistory.push(moveObj);
+                        updateUI();
+                        triggerEngineEvaluation(moveObj);
+                    }
+                }
+            });
         } else if (diffLevel === 8) { // Advanced (~1800 ELO)
-            skillLevel = 12;
-            targetElo = 1800;
-            searchDepth = 8;
-            multiPV = 1;
+            botEngine.setSkillLevel(12, 1800);
+            botEngine.evaluatePosition(chess.fen(), 8, (evalRes) => {
+                if (evalRes.bestMove) {
+                    const from = evalRes.bestMove.substring(0, 2);
+                    const to = evalRes.bestMove.substring(2, 4);
+                    const promo = evalRes.bestMove.substring(4, 5);
+                    const moveObj = chess.move({ from, to, promotion: promo || 'q' });
+                    if (moveObj) {
+                        if (chess.in_check()) sounds.playCheck();
+                        else if (moveObj.captured) sounds.playCapture();
+                        else sounds.playMove();
+                        moveHistory.push(moveObj);
+                        updateUI();
+                        triggerEngineEvaluation(moveObj);
+                    }
+                }
+            });
         } else { // Grandmaster (2500+ ELO)
-            skillLevel = 20;
-            targetElo = 2500;
-            searchDepth = 14;
-            multiPV = 1;
+            botEngine.setSkillLevel(20, 2800);
+            botEngine.evaluatePosition(chess.fen(), 14, (evalRes) => {
+                if (evalRes.bestMove) {
+                    const from = evalRes.bestMove.substring(0, 2);
+                    const to = evalRes.bestMove.substring(2, 4);
+                    const promo = evalRes.bestMove.substring(4, 5);
+                    const moveObj = chess.move({ from, to, promotion: promo || 'q' });
+                    if (moveObj) {
+                        if (chess.in_check()) sounds.playCheck();
+                        else if (moveObj.captured) sounds.playCapture();
+                        else sounds.playMove();
+                        moveHistory.push(moveObj);
+                        updateUI();
+                        triggerEngineEvaluation(moveObj);
+                    }
+                }
+            });
         }
-
-        engine.setSkillLevel(skillLevel, targetElo);
-
-        engine.evaluatePosition(chess.fen(), searchDepth, (evalRes) => {
-            let chosenMove = evalRes.bestMove;
-
-            // Controlled Move Sampling for Beginner/Intermediate to make 800 ELO winnable & human-like
-            if (diffLevel === 1 && evalRes.multipv && evalRes.multipv.length > 1) {
-                const rand = Math.random();
-                if (rand > 0.65 && evalRes.multipv[1]) {
-                    chosenMove = evalRes.multipv[1]; // 35% chance to pick 2nd candidate move
-                } else if (rand > 0.85 && evalRes.multipv[2]) {
-                    chosenMove = evalRes.multipv[2]; // 15% chance to pick 3rd candidate move
-                }
-            }
-
-            if (chosenMove) {
-                const from = chosenMove.substring(0, 2);
-                const to = chosenMove.substring(2, 4);
-                const promo = chosenMove.substring(4, 5);
-
-                const moveObj = chess.move({ from, to, promotion: promo || 'q' });
-                if (moveObj) {
-                    if (chess.in_check()) sounds.playCheck();
-                    else if (moveObj.captured) sounds.playCapture();
-                    else sounds.playMove();
-
-                    moveHistory.push(moveObj);
-                    updateUI();
-                    triggerEngineEvaluation(moveObj);
-                }
-            }
-        }, multiPV);
     }
 
-    // Stockfish Evaluation & Hint Overlay
+    // Master Engine Evaluation & Hint Overlay (ALWAYS 100% Master Strength Depth 14)
     function triggerEngineEvaluation(lastMoveObj = null) {
         const isWhiteTurn = (chess.turn() === 'w');
-        engine.evaluatePosition(chess.fen(), 12, (evalRes) => {
+        evalEngine.evaluatePosition(chess.fen(), 14, (evalRes) => {
             updateEvalBar(evalRes.score, evalRes.isMate);
 
             if (lastMoveObj && currentMode === 'play') {
@@ -329,6 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             prevEvalScore = evalRes.score;
 
+            // Master Hints in Play Mode
             if (currentMode === 'play' && chkShowHints.checked && evalRes.bestMove && chess.turn() === playerColor) {
                 const from = evalRes.bestMove.substring(0, 2);
                 const to = evalRes.bestMove.substring(2, 4);
@@ -341,7 +378,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 boardRenderer.drawArrow(from, to, '#10b981', 10);
 
                 recTextEl.innerHTML = `
-                    Stockfish Position Evaluation: <strong>${evalRes.score}</strong>.<br>
+                    Stockfish Master Position Evaluation: <strong>${evalRes.score}</strong>.<br>
                     Recommended Best Move: <strong style="color: var(--accent-emerald); font-size: 1rem;">${from.toUpperCase()} ➔ ${to.toUpperCase()}</strong>
                 `;
             }
@@ -490,7 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
         triggerEngineEvaluation(lastMoveObj);
     }
 
-    // --- Puzzles Engine Mode with Automatic Next Puzzle Transition ---
+    // --- Puzzles Engine Mode ---
     function loadNextPuzzle() {
         const cat = selectPuzzleCategory.value;
         const rat = parseInt(selectPuzzleRating.value, 10);
@@ -515,12 +552,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         isFlipped = (chess.turn() === 'b');
         boardRenderer.setFlipped(isFlipped);
+        boardRenderer.clearHighlights();
 
         puzzleDescription.innerHTML = `<strong>${p.title}</strong>: ${p.description}`;
         puzzleDescription.style.color = "var(--text-primary)";
         puzzleScoreBadge.textContent = `Solved: ${puzzleManager.score.solved} | Failed: ${puzzleManager.score.failed}`;
 
-        boardRenderer.clearArrows();
         updateUI();
     }
 
@@ -534,6 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
     selectPuzzleRating.addEventListener('change', loadNextPuzzle);
     btnNextPuzzle.addEventListener('click', loadNextPuzzleInSequence);
 
+    // Master Hint Calculation for Puzzles
     btnPuzzleHint.addEventListener('click', () => {
         if (!puzzleManager.currentPuzzle || isPuzzleLocked) return;
         const expected = puzzleManager.currentPuzzle.moves[puzzleManager.moveIndex];
@@ -598,12 +636,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }, 400);
             }
         } else {
+            // INCORRECT MOVE -> PLAY BLUNDER SOUND EXACTLY ONCE
             isPuzzleLocked = true;
             const playedMoveObj = chess.move({ from, to, promotion: 'q' });
-            sounds.playBlunder();
+            sounds.playBlunder(); // Single blunder audio execution
             updateUI();
 
-            engine.evaluatePosition(chess.fen(), 14, (evalRes) => {
+            // Evaluate Refutation silently (Audio suppressed during refutation move)
+            evalEngine.evaluatePosition(chess.fen(), 14, (evalRes) => {
                 let refutationSan = "punishment move";
                 if (evalRes.bestMove) {
                     const rFrom = evalRes.bestMove.substring(0, 2);
@@ -614,7 +654,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const refMoveObj = chess.move({ from: rFrom, to: rTo, promotion: rPromo || 'q' });
                         if (refMoveObj) refutationSan = refMoveObj.san;
 
-                        sounds.playCheck();
+                        // DO NOT RE-PLAY AUDIO HERE to prevent double-firing blunder/check sound!
                         boardRenderer.drawArrow(rFrom, rTo, '#ef4444', 12);
                         updateUI();
 
