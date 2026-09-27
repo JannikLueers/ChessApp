@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antigravity Chess & Analysis Suite</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <header>
+        <div class="logo-group">
+            <span class="logo-icon">♟</span>
+            <h1>Antigravity Chess</h1>
+        </div>
+        <div class="nav-tabs">
+            <button id="tab-play" class="tab-btn active">🎮 Play vs Computer</button>
+            <button id="tab-analysis" class="tab-btn">🔍 Game Analysis</button>
+            <button id="tab-puzzles" class="tab-btn">🧩 Puzzles</button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main>
+        <!-- Board & Evaluation Bar Area -->
+        <section class="board-section">
+            <!-- Vertical Stockfish Real-Time Evaluation Bar -->
+            <div class="eval-bar-container" title="Stockfish Real-Time Evaluation">
+                <div id="eval-bar-black" class="eval-bar-black" style="height: 50%;"></div>
+                <div id="eval-bar-white" class="eval-bar-white"></div>
+                <div id="eval-text" class="eval-text">0.0</div>
+            </div>
+
+            <!-- Interactive 8x8 Chessboard Container -->
+            <div class="board-wrapper">
+                <div id="chessboard" class="chessboard"></div>
+                <!-- SVG Arrow Overlay for Stockfish Best Move Recommendations -->
+                <svg id="board-svg-overlay" class="board-svg-overlay"></svg>
+            </div>
+        </section>
+
+        <!-- Right Side Panel: Controls, Analysis & Puzzles -->
+        <section class="panel-section">
+            
+            <!-- Game Status & Player Banner -->
+            <div class="card">
+                <div class="player-banner">
+                    <div class="player-info">
+                        <div id="black-avatar" class="player-avatar black">♟</div>
+                        <div>
+                            <div id="black-name" style="font-weight: 700; font-size: 0.9rem;">Stockfish AI</div>
+                            <div id="black-rating" style="font-size: 0.75rem; color: var(--text-muted);">Bot (Medium)</div>
+                        </div>
+                    </div>
+                    <div id="turn-indicator" style="font-weight: 800; font-size: 0.85rem; color: var(--accent-emerald);">WHITE'S TURN</div>
+                </div>
+
+                <div class="player-banner" style="margin-bottom: 0;">
+                    <div class="player-info">
+                        <div id="white-avatar" class="player-avatar white">♔</div>
+                        <div>
+                            <div id="white-name" style="font-weight: 700; font-size: 0.9rem;">Player</div>
+                            <div id="white-rating" style="font-size: 0.75rem; color: var(--text-muted);">You</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Single Player Controls Panel (Active in Play Mode) -->
+            <div id="play-controls-card" class="card">
+                <div class="card-title">
+                    <span>Single Player Settings</span>
+                    <span style="font-size: 0.8rem; color: var(--text-muted);">Stockfish v10</span>
+                </div>
+
+                <div class="control-grid">
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">AI Difficulty</label>
+                        <select id="select-difficulty" class="select-field">
+                            <option value="1">Beginner (~800)</option>
+                            <option value="4" selected>Intermediate (~1400)</option>
+                            <option value="8">Advanced (~1800)</option>
+                            <option value="14">Grandmaster (2500+)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Your Side</label>
+                        <select id="select-side" class="select-field">
+                            <option value="w" selected>White</option>
+                            <option value="b">Black</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="control-grid">
+                    <button id="btn-new-game" class="btn btn-primary">➕ New Game</button>
+                    <button id="btn-undo" class="btn">↩ Undo Move</button>
+                </div>
+                <button id="btn-flip" class="btn" style="width: 100%; margin-bottom: 0.75rem;">🔄 Flip Board View</button>
+
+                <!-- Engine Hint Arrow Toggle -->
+                <label class="checkbox-field">
+                    <input type="checkbox" id="chk-show-hints">
+                    <span>💡 Show Best Move Arrow Hint</span>
+                </label>
+            </div>
+
+            <!-- Analysis Mode Toolbar (Active in Analysis Mode) -->
+            <div id="analysis-controls-card" class="card" style="display: none;">
+                <div class="card-title">
+                    <span>Game Analysis Toolbar</span>
+                    <button id="btn-open-import" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">📥 Import PGN</button>
+                </div>
+
+                <!-- Saved Games Dropdown Selector -->
+                <div style="margin-bottom: 0.75rem;">
+                    <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Saved Games Library</label>
+                    <select id="select-saved-games" class="select-field">
+                        <option value="">-- Select Saved Game --</option>
+                    </select>
+                </div>
+
+                <!-- Overall Accuracy Score Cards -->
+                <div class="accuracy-grid">
+                    <div class="accuracy-card">
+                        <div class="accuracy-label">White Accuracy</div>
+                        <div id="white-accuracy-val" class="accuracy-val">94.5%</div>
+                    </div>
+                    <div class="accuracy-card">
+                        <div class="accuracy-label">Black Accuracy</div>
+                        <div id="black-accuracy-val" class="accuracy-val">82.1%</div>
+                    </div>
+                </div>
+
+                <!-- Step-by-Step Scrubber Controls -->
+                <div class="control-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 0.75rem;">
+                    <button id="btn-first-move" class="btn" title="First Move">|&lt;</button>
+                    <button id="btn-prev-move" class="btn" title="Previous Move">&lt;</button>
+                    <button id="btn-next-move" class="btn" title="Next Move">&gt;</button>
+                    <button id="btn-last-move" class="btn" title="Last Move">&gt;|</button>
+                </div>
+
+                <!-- Stockfish Best Move Recommendation Callout -->
+                <div id="recommendation-box" class="recommendation-box">
+                    <div class="recommendation-title">
+                        <span>🌟 Stockfish Recommendation</span>
+                    </div>
+                    <div id="recommendation-text" class="recommendation-text">
+                        Import a game to see Stockfish move recommendations and quality ratings.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Puzzles Mode Toolbar (Active in Puzzles Mode) -->
+            <div id="puzzles-controls-card" class="card" style="display: none;">
+                <div class="card-title">
+                    <span>🧩 Puzzle Mode</span>
+                    <span id="puzzle-score-badge" style="font-size: 0.8rem; color: var(--accent-emerald); font-weight: 700;">Score: 0 / 0</span>
+                </div>
+
+                <div class="control-grid">
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Category</label>
+                        <select id="select-puzzle-category" class="select-field">
+                            <option value="mixed" selected>Mixed Tactics</option>
+                            <option value="mate1">Checkmate in 1</option>
+                            <option value="mate2">Checkmate in 2</option>
+                            <option value="mate3">Checkmate in 3</option>
+                            <option value="material">Material Wins</option>
+                            <option value="endgame">Endgame Tactics</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Difficulty</label>
+                        <select id="select-puzzle-rating" class="select-field">
+                            <option value="1200">Easy (~1000-1200)</option>
+                            <option value="1600" selected>Medium (~1600)</option>
+                            <option value="2000">Hard (~2000)</option>
+                            <option value="3000">Master (2400+)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="control-grid">
+                    <button id="btn-next-puzzle" class="btn btn-primary">⏭ Next Puzzle</button>
+                    <button id="btn-puzzle-hint" class="btn">💡 Get Hint</button>
+                </div>
+
+                <div id="puzzle-feedback" class="recommendation-box" style="background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3);">
+                    <div id="puzzle-description" class="recommendation-text" style="font-weight: 600;">
+                        Find the best tactical sequence for White!
+                    </div>
+                </div>
+            </div>
+
+            <!-- Move History Table & Badges -->
+            <div id="move-history-card" class="card" style="flex: 1; display: flex; flex-direction: column;">
+                <div class="card-title">
+                    <span>Move History</span>
+                    <span id="move-count-text" style="font-size: 0.8rem; color: var(--text-muted);">0 Moves</span>
+                </div>
+
+                <div class="move-history-container">
+                    <table class="move-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>White</th>
+                                <th>Black</th>
+                            </tr>
+                        </thead>
+                        <tbody id="move-table-body">
+                            <!-- Moves appended dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- PGN Import Modal -->
+    <div id="pgn-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-title">Import Chess.com Game</div>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                Paste your raw PGN text or downloaded Chess.com game notation below.
+            </p>
+            <textarea id="pgn-textarea" class="textarea-field" placeholder="[Event 'Live Chess']&#10;[Site 'Chess.com']&#10;1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5..."></textarea>
+            
+            <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+                <button id="btn-close-modal" class="btn">Cancel</button>
+                <button id="btn-submit-pgn" class="btn btn-primary">Analyze & Save Game</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/chess.min.js"></script>
+    <script src="js/stockfishEngine.js"></script>
+    <script src="js/pieces.js"></script>
+    <script src="js/boardRenderer.js"></script>
+    <script src="js/pgnParser.js"></script>
+    <script src="js/puzzles.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/app.js"></script>
+
+</body>
+</html>
