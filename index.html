@@ -249,18 +249,48 @@
         </section>
     </main>
 
-    <!-- PGN Import Modal -->
+    <!-- PGN & Chess.com Import Modal -->
     <div id="pgn-modal" class="modal-overlay">
-        <div class="modal-card">
-            <div class="modal-title">Import Chess.com Game</div>
-            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
-                Paste your raw PGN text or downloaded Chess.com game notation below.
-            </p>
-            <textarea id="pgn-textarea" class="textarea-field" placeholder="[Event 'Live Chess']&#10;[Site 'Chess.com']&#10;1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5..."></textarea>
-            
-            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-                <button id="btn-close-modal" class="btn">Cancel</button>
-                <button id="btn-submit-pgn" class="btn btn-primary">Analyze & Save Game</button>
+        <div class="modal-card" style="max-width: 520px;">
+            <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>📥 Import & Scrape Chess.com Games</span>
+                <button id="btn-close-modal" class="btn" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">✕</button>
+            </div>
+
+            <!-- Modal Sub-Tabs -->
+            <div class="import-tab-nav">
+                <button id="tab-import-chesscom" class="import-tab-btn active">🌐 Chess.com Username</button>
+                <button id="tab-import-pgn" class="import-tab-btn">📝 Paste Raw PGN</button>
+            </div>
+
+            <!-- Tab 1: Chess.com Username Scraper / Fetcher -->
+            <div id="section-chesscom-import">
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.6rem;">
+                    Enter any public Chess.com username to instantly fetch their last 10 games directly in your browser.
+                </p>
+                <div class="chesscom-fetch-form">
+                    <input type="text" id="chesscom-username-input" class="select-field" placeholder="Chess.com Username (e.g. Hikaru)" style="flex: 1; padding: 0.45rem 0.6rem;">
+                    <button id="btn-fetch-chesscom" class="btn btn-primary" style="white-space: nowrap;">🔍 Fetch Games</button>
+                </div>
+                
+                <div id="chesscom-status" style="font-size: 0.78rem; font-weight: 600; min-height: 1.2rem; margin-bottom: 0.4rem;"></div>
+                <div id="chesscom-games-list" class="chesscom-games-list">
+                    <div style="text-align: center; color: var(--text-muted); padding: 1.5rem 0; font-size: 0.8rem;">
+                        Enter a username above and click 'Fetch Games' to view recent matches.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab 2: Raw PGN Textarea -->
+            <div id="section-pgn-import" style="display: none;">
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.6rem;">
+                    Paste your raw PGN text or downloaded Chess.com game notation below.
+                </p>
+                <textarea id="pgn-textarea" class="textarea-field" placeholder="[Event 'Live Chess']&#10;[Site 'Chess.com']&#10;1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5..."></textarea>
+                
+                <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.5rem;">
+                    <button id="btn-submit-pgn" class="btn btn-primary">Analyze & Save Game</button>
+                </div>
             </div>
         </div>
     </div>

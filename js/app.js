@@ -716,6 +716,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- Modal Sub-Tab Switching & Chess.com Game Importer ---
+    const tabImportChesscom = document.getElementById('tab-import-chesscom');
+    const tabImportPgn = document.getElementById('tab-import-pgn');
+    const sectionChesscomImport = document.getElementById('section-chesscom-import');
+    const sectionPgnImport = document.getElementById('section-pgn-import');
+
+    if (tabImportChesscom && tabImportPgn) {
+        tabImportChesscom.addEventListener('click', () => {
+            tabImportChesscom.classList.add('active');
+            tabImportPgn.classList.remove('active');
+            sectionChesscomImport.style.display = 'block';
+            sectionPgnImport.style.display = 'none';
+        });
+
+        tabImportPgn.addEventListener('click', () => {
+            tabImportPgn.classList.add('active');
+            tabImportChesscom.classList.remove('active');
+            sectionPgnImport.style.display = 'block';
+            sectionChesscomImport.style.display = 'none';
+        });
+    }
+
     btnOpenImport.addEventListener('click', () => pgnModal.classList.add('active'));
     btnCloseModal.addEventListener('click', () => pgnModal.classList.remove('active'));
 
@@ -738,6 +760,160 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('Could not parse PGN. Please check the notation format.');
         }
     });
+
+    // Chess.com Public REST API User Games Fetcher
+    const chesscomUsernameInput = document.getElementById('chesscom-username-input');
+    const btnFetchChesscom = document.getElementById('btn-fetch-chesscom');
+    const chesscomStatus = document.getElementById('chesscom-status');
+    const chesscomGamesList = document.getElementById('chesscom-games-list');
+
+    if (btnFetchChesscom && chesscomUsernameInput) {
+        btnFetchChesscom.addEventListener('click', () => handleChesscomFetch());
+        chesscomUsernameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') handleChesscomFetch();
+        });
+    }
+
+    async function handleChesscomFetch() {
+        const username = chesscomUsernameInput.value.trim();
+        if (!username) {
+            chesscomStatus.textContent = '❌ Please enter a Chess.com username.';
+            chesscomStatus.style.color = '#f87171';
+            return;
+        }
+
+        chesscomStatus.textContent = `⏳ Fetching archives for "${username}"...`;
+        chesscomStatus.style.color = 'var(--accent-blue)';
+        chesscomGamesList.innerHTML = `
+            <div style="text-align: center; color: var(--text-muted); padding: 1.5rem 0; font-size: 0.8rem;">
+                Loading games from Chess.com API...
+            </div>
+        `;
+        btnFetchChesscom.disabled = true;
+
+        try {
+            const games = await fetchChessComUserGames(username, 10);
+            btnFetchChesscom.disabled = false;
+
+            if (!games || games.length === 0) {
+                chesscomStatus.textContent = `⚠️ No recent games found for "${username}".`;
+                chesscomStatus.style.color = '#fbbf24';
+                chesscomGamesList.innerHTML = `
+                    <div style="text-align: center; color: var(--text-muted); padding: 1.5rem 0; font-size: 0.8rem;">
+                        No games played recently or account has no public archives.
+                    </div>
+                `;
+                return;
+            }
+
+            chesscomStatus.textContent = `✅ Found ${games.length} games for "${username}":`;
+            chesscomStatus.style.color = 'var(--accent-emerald)';
+            renderChessComGamesList(games);
+
+        } catch (err) {
+            btnFetchChesscom.disabled = false;
+            chesscomStatus.textContent = `❌ ${err.message}`;
+            chesscomStatus.style.color = '#f87171';
+            chesscomGamesList.innerHTML = `
+                <div style="text-align: center; color: var(--text-muted); padding: 1.5rem 0; font-size: 0.8rem;">
+                    Failed to load games. Verify the username and internet connection.
+                </div>
+            `;
+        }
+    }
+
+    async function fetchChessComUserGames(username, limit = 10) {
+        const cleanUser = username.trim().toLowerCase();
+        const archivesUrl = `https://api.chess.com/pub/player/${encodeURIComponent(cleanUser)}/games/archives`;
+
+        const archivesRes = await fetch(archivesUrl);
+        if (archivesRes.status === 404) {
+            throw new Error(`User "${username}" not found on Chess.com.`);
+        }
+        if (!archivesRes.ok) {
+            throw new Error(`Chess.com API error (HTTP ${archivesRes.status}).`);
+        }
+
+        const archivesData = await archivesRes.json();
+        const archiveUrls = archivesData.archives || [];
+        if (archiveUrls.length === 0) return [];
+
+        const collectedGames = [];
+        // Traverse recent monthly archives backwards to get the most recent games
+        for (let i = archiveUrls.length - 1; i >= 0 && collectedGames.length < limit; i--) {
+            const monthUrl = archiveUrls[i];
+            try {
+                const monthRes = await fetch(monthUrl);
+                if (!monthRes.ok) continue;
+                const monthData = await monthRes.json();
+                const monthGames = monthData.games || [];
+
+                for (let j = monthGames.length - 1; j >= 0 && collectedGames.length < limit; j--) {
+                    const g = monthGames[j];
+                    if (g.pgn && (g.rules === 'chess' || !g.rules)) {
+                        collectedGames.push(g);
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed fetching archive month:', monthUrl, e);
+            }
+        }
+        return collectedGames;
+    }
+
+    function renderChessComGamesList(games) {
+        chesscomGamesList.innerHTML = '';
+        games.forEach((game) => {
+            const whiteUser = game.white?.username || 'White';
+            const whiteRating = game.white?.rating || '?';
+            const blackUser = game.black?.username || 'Black';
+            const blackRating = game.black?.rating || '?';
+            const timeClass = (game.time_class || 'game').toLowerCase();
+            const dateStr = game.end_time ? new Date(game.end_time * 1000).toLocaleDateString() : '';
+
+            let badgeClass = 'game-badge-blitz';
+            if (timeClass === 'bullet') badgeClass = 'game-badge-bullet';
+            else if (timeClass === 'rapid') badgeClass = 'game-badge-rapid';
+            else if (timeClass === 'daily') badgeClass = 'game-badge-daily';
+
+            const card = document.createElement('div');
+            card.className = 'chesscom-game-card';
+            card.innerHTML = `
+                <div class="chesscom-game-main">
+                    <div class="chesscom-game-players">
+                        ⚪ ${whiteUser} (${whiteRating}) vs ⚫ ${blackUser} (${blackRating})
+                    </div>
+                    <div class="chesscom-game-meta">
+                        <span class="badge ${badgeClass}">${timeClass.toUpperCase()}</span>
+                        <span>📅 ${dateStr}</span>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-sm btn-load-chesscom-game" style="padding: 0.25rem 0.6rem; font-size: 0.72rem; white-space: nowrap;">
+                    🔍 Analyze
+                </button>
+            `;
+
+            const btnLoad = card.querySelector('.btn-load-chesscom-game');
+            btnLoad.addEventListener('click', () => {
+                const parsed = PgnGameParser.parsePGN(game.pgn);
+                if (parsed && parsed.moves.length > 0) {
+                    parsed.evalScores = new Array(parsed.moves.length + 1).fill(0);
+                    parsed.accuracy = { white: "100.0", black: "100.0" };
+                    savedGames.unshift(parsed);
+                    if (savedGames.length > 15) savedGames.pop();
+                    saveGamesToStorage(savedGames);
+                    populateSavedGamesDropdown();
+
+                    pgnModal.classList.remove('active');
+                    loadAnalyzedGame(parsed);
+                } else {
+                    alert('Could not parse game PGN from Chess.com.');
+                }
+            });
+
+            chesscomGamesList.appendChild(card);
+        });
+    }
 
     // Move-by-Move Empirical Stockfish Accuracy Rating Algorithm (Chess.com / Lichess Standard)
     function calculateAccuracyFromEvalScores(gameObj) {
