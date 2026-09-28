@@ -1005,12 +1005,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!targetMove) return;
 
         const moveSan = targetMove.san;
-        const moveUci = from + to;
-        const res = puzzleManager.verifyUserMove(moveSan) || puzzleManager.verifyUserMove(moveUci);
+        const promo = targetMove.promotion || 'q';
+        const res = puzzleManager.verifyUserMove(from, to, moveSan, promo);
 
         if (res.valid) {
-            chess.move({ from, to, promotion: 'q' });
-            sounds.playCapture();
+            const playedMoveObj = chess.move({ from, to, promotion: promo });
+            if (chess.in_check()) sounds.playCheck();
+            else if (playedMoveObj && playedMoveObj.captured) sounds.playCapture();
+            else sounds.playMove();
+
             updateUI();
 
             if (res.completed) {
@@ -1026,8 +1029,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => {
                     const rFrom = res.replyMove.substring(0, 2);
                     const rTo = res.replyMove.substring(2, 4);
-                    chess.move({ from: rFrom, to: rTo, promotion: 'q' });
-                    sounds.playMove();
+                    const rPromo = res.replyMove.substring(4, 5) || 'q';
+
+                    const replyMoveObj = chess.move({ from: rFrom, to: rTo, promotion: rPromo });
+                    if (chess.in_check()) sounds.playCheck();
+                    else if (replyMoveObj && replyMoveObj.captured) sounds.playCapture();
+                    else sounds.playMove();
+
                     updateUI();
                 }, 400);
             }

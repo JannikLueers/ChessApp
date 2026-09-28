@@ -333,14 +333,26 @@ class PuzzleManager {
         return this.currentPuzzle;
     }
 
-    verifyUserMove(moveSanOrUci) {
+    verifyUserMove(from, to, san = '', promo = '') {
         if (!this.currentPuzzle) return { valid: false };
 
         const expectedMove = this.currentPuzzle.moves[this.moveIndex];
-        const moveClean = moveSanOrUci.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        if (!expectedMove) return { valid: false };
+
+        const userUci = (from + to + (promo || '')).toLowerCase();
+        const expectedUci = expectedMove.toLowerCase();
+
+        const expectedFrom = expectedMove.length >= 4 ? expectedMove.substring(0, 2).toLowerCase() : '';
+        const expectedTo = expectedMove.length >= 4 ? expectedMove.substring(2, 4).toLowerCase() : '';
+
+        const sanClean = san.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
         const expectedClean = expectedMove.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
 
-        const isCorrect = (moveClean === expectedClean);
+        const isSquareMatch = (from.toLowerCase() === expectedFrom && to.toLowerCase() === expectedTo);
+        const isUciMatch = (userUci === expectedUci);
+        const isSanMatch = (sanClean !== '' && sanClean === expectedClean);
+
+        const isCorrect = isSquareMatch || isUciMatch || isSanMatch;
 
         if (isCorrect) {
             this.moveIndex++;
