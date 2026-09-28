@@ -1181,4 +1181,11 @@ document.addEventListener('DOMContentLoaded', () => {
             moveTableBody.appendChild(tr);
         }
     }
+
+    // Dynamic Viewport Resize Redraw
+    window.addEventListener('resize', () => {
+        if (currentMode === 'analysis' && analyzedGame) {
+            drawEvalGraph();
+        }
+    });
 });
