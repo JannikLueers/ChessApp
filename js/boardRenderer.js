@@ -179,12 +179,14 @@ class BoardRenderer {
     }
 
     // SVG Recommendation Arrow Generator
-    drawArrow(fromSq, toSq, color = '#10b981', width = 10) {
+    drawArrow(fromSq, toSq, color = '#10b981', width = 12) {
         this.clearArrows();
 
         if (!fromSq || !toSq || fromSq === toSq) return;
 
-        const sqSize = 70;
+        this.svgOverlay.setAttribute('viewBox', '0 0 800 800');
+
+        const sqSize = 100;
         const getCoords = (sq) => {
             const file = sq.charCodeAt(0) - 97;
             const rank = parseInt(sq[1], 10) - 1;
@@ -206,11 +208,15 @@ class BoardRenderer {
         const angle = Math.atan2(dy, dx);
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        const headLen = 22;
-        const arrowDist = dist - headLen / 2;
+        // Arrowhead geometry: Head width is 3x tail width, head length is 2.5x tail width
+        const headWidth = width * 3;
+        const headLength = width * 2.5;
 
-        const endX = start.x + arrowDist * Math.cos(angle);
-        const endY = start.y + arrowDist * Math.sin(angle);
+        // Line shaft stops at base of arrowhead so arrowhead tip touches target square center
+        const lineDist = Math.max(0, dist - headLength);
+
+        const endX = start.x + lineDist * Math.cos(angle);
+        const endY = start.y + lineDist * Math.sin(angle);
 
         let defs = this.svgOverlay.querySelector('defs');
         if (!defs) {
@@ -218,19 +224,20 @@ class BoardRenderer {
             this.svgOverlay.appendChild(defs);
         }
 
-        const markerId = `arrowhead-${color.replace('#', '')}`;
+        const markerId = `arrowhead-${color.replace('#', '')}-${width}`;
         if (!defs.querySelector(`#${markerId}`)) {
             const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
             marker.setAttribute('id', markerId);
-            marker.setAttribute('viewBox', '0 0 10 10');
-            marker.setAttribute('refX', '6');
-            marker.setAttribute('refY', '5');
-            marker.setAttribute('markerWidth', '6');
-            marker.setAttribute('markerHeight', '6');
+            marker.setAttribute('markerUnits', 'userSpaceOnUse');
+            marker.setAttribute('viewBox', `0 0 ${headLength} ${headWidth}`);
+            marker.setAttribute('refX', '0');
+            marker.setAttribute('refY', `${headWidth / 2}`);
+            marker.setAttribute('markerWidth', `${headLength}`);
+            marker.setAttribute('markerHeight', `${headWidth}`);
             marker.setAttribute('orient', 'auto-start-reverse');
 
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', 'M 0 0 L 10 5 L 0 10 z');
+            path.setAttribute('d', `M 0 0 L ${headLength} ${headWidth / 2} L 0 ${headWidth} Z`);
             path.setAttribute('fill', color);
             marker.appendChild(path);
             defs.appendChild(marker);
@@ -243,7 +250,7 @@ class BoardRenderer {
         line.setAttribute('y2', endY);
         line.setAttribute('stroke', color);
         line.setAttribute('stroke-width', width);
-        line.setAttribute('stroke-linecap', 'round');
+        line.setAttribute('stroke-linecap', 'butt');
         line.setAttribute('opacity', '0.85');
         line.setAttribute('marker-end', `url(#${markerId})`);
 

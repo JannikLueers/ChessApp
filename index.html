@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Antigravity Chess & Analysis Suite</title>
+    <title>Jannik's Chess Coach</title>
+    <!-- Knight SVG Favicon for Browser Tab -->
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 45 45'%3E%3Crect width='45' height='45' rx='10' fill='%23090d16'/%3E%3Cg fill='none' fill-rule='evenodd' stroke='%2310b981' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 13,25 9,21 C 8,19 11,16 13,16 C 16,16 16.5,18 19,18 C 21,18 21.5,15 22.5,13.5 C 23.5,12 21.5,10.5 22,10 z' fill='%23121929'/%3E%3Cpath d='M 24,18 C 24.38,20.25 22.75,22.75 20.5,23.5 C 18.25,24.25 16.25,23.25 15,21.25 C 13.75,19.25 14.25,16.75 16.5,16 C 18.75,15.25 20.75,16.25 22,18.25' fill='%23121929'/%3E%3Ccircle cx='9.5' cy='25.5' r='1.5' fill='%2310b981'/%3E%3Cpath d='M 13.5,15.5 C 12.5,13 11,11 7.5,10.5 C 11.5,10 16,12.5 17,14' fill='%23121929'/%3E%3C/g%3E%3C/svg%3E">
     <link rel="stylesheet" href="css/style.css">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,8 +18,10 @@
     <!-- Header Navigation -->
     <header>
         <div class="logo-group">
-            <span class="logo-icon">♟</span>
-            <h1>Antigravity Chess</h1>
+            <span class="logo-icon" style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px;">
+                <svg viewBox="0 0 45 45" style="width: 26px; height: 26px;"><g fill="none" fill-rule="evenodd" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 13,25 9,21 C 8,19 11,16 13,16 C 16,16 16.5,18 19,18 C 21,18 21.5,15 22.5,13.5 C 23.5,12 21.5,10.5 22,10 z" fill="#121929"/><path d="M 24,18 C 24.38,20.25 22.75,22.75 20.5,23.5 C 18.25,24.25 16.25,23.25 15,21.25 C 13.75,19.25 14.25,16.75 16.5,16 C 18.75,15.25 20.75,16.25 22,18.25" fill="#121929"/><circle cx="9.5" cy="25.5" r="1.5" fill="#10b981"/><path d="M 13.5,15.5 C 12.5,13 11,11 7.5,10.5 C 11.5,10 16,12.5 17,14" fill="#121929"/></g></svg>
+            </span>
+            <h1>Jannik's Chess Coach</h1>
         </div>
         <div class="nav-tabs">
             <button id="tab-play" class="tab-btn active">🎮 Play vs Computer</button>
@@ -41,32 +46,47 @@
                 <div id="chessboard" class="chessboard"></div>
                 <!-- SVG Arrow Overlay for Stockfish Best Move Recommendations -->
                 <svg id="board-svg-overlay" class="board-svg-overlay"></svg>
+
+                <!-- Clean Pawn Promotion Choice Modal Overlay -->
+                <div id="promotion-modal" class="promotion-modal-overlay">
+                    <div class="promotion-card">
+                        <div id="promotion-pieces-grid" class="promotion-pieces-grid">
+                            <!-- Choice buttons appended dynamically -->
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 
         <!-- Right Side Panel: Controls, Analysis & Puzzles -->
         <section class="panel-section">
             
-            <!-- Game Status & Player Banner -->
+            <!-- Game Status & Player Banner with Captured Pieces Summary -->
             <div class="card">
+                <div id="turn-indicator" style="font-size: 0.75rem; font-weight: 700; text-align: center; margin-bottom: 0.4rem; color: var(--accent-emerald);">WHITE'S TURN</div>
                 <div class="player-banner">
-                    <div class="player-info">
-                        <div id="black-avatar" class="player-avatar black">♟</div>
-                        <div>
-                            <div id="black-name" style="font-weight: 700; font-size: 0.9rem;">Stockfish AI</div>
-                            <div id="black-rating" style="font-size: 0.75rem; color: var(--text-muted);">Bot (Medium)</div>
+                    <div class="player-main-info">
+                        <div class="player-info">
+                            <div id="black-avatar" class="player-avatar black">♟</div>
+                            <div>
+                                <div id="black-name" style="font-weight: 700; font-size: 0.8rem;">Stockfish AI</div>
+                                <div id="black-rating" style="font-size: 0.65rem; color: var(--text-muted);">Bot (Medium)</div>
+                            </div>
                         </div>
+                        <div id="black-captured" class="captured-pieces-row"></div>
                     </div>
-                    <div id="turn-indicator" style="font-weight: 800; font-size: 0.85rem; color: var(--accent-emerald);">WHITE'S TURN</div>
                 </div>
 
                 <div class="player-banner" style="margin-bottom: 0;">
-                    <div class="player-info">
-                        <div id="white-avatar" class="player-avatar white">♔</div>
-                        <div>
-                            <div id="white-name" style="font-weight: 700; font-size: 0.9rem;">Player</div>
-                            <div id="white-rating" style="font-size: 0.75rem; color: var(--text-muted);">You</div>
+                    <div class="player-main-info">
+                        <div class="player-info">
+                            <div id="white-avatar" class="player-avatar white">♔</div>
+                            <div>
+                                <div id="white-name" style="font-weight: 700; font-size: 0.8rem;">Player</div>
+                                <div id="white-rating" style="font-size: 0.65rem; color: var(--text-muted);">You</div>
+                            </div>
                         </div>
+                        <div id="white-captured" class="captured-pieces-row"></div>
                     </div>
                 </div>
             </div>
@@ -75,12 +95,12 @@
             <div id="play-controls-card" class="card">
                 <div class="card-title">
                     <span>Single Player Settings</span>
-                    <span style="font-size: 0.8rem; color: var(--text-muted);">Stockfish v10</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">Stockfish v10</span>
                 </div>
 
                 <div class="control-grid">
                     <div>
-                        <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">AI Difficulty</label>
+                        <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 3px;">AI Difficulty</label>
                         <select id="select-difficulty" class="select-field">
                             <option value="1">Beginner (~800)</option>
                             <option value="4" selected>Intermediate (~1400)</option>
@@ -89,7 +109,7 @@
                         </select>
                     </div>
                     <div>
-                        <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Your Side</label>
+                        <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 3px;">Your Side</label>
                         <select id="select-side" class="select-field">
                             <option value="w" selected>White</option>
                             <option value="b">Black</option>
@@ -101,7 +121,7 @@
                     <button id="btn-new-game" class="btn btn-primary">➕ New Game</button>
                     <button id="btn-undo" class="btn">↩ Undo Move</button>
                 </div>
-                <button id="btn-flip" class="btn" style="width: 100%; margin-bottom: 0.75rem;">🔄 Flip Board View</button>
+                <button id="btn-flip" class="btn" style="width: 100%; margin-bottom: 0.5rem;">🔄 Flip Board View</button>
 
                 <!-- Engine Hint Arrow Toggle -->
                 <label class="checkbox-field">
@@ -110,46 +130,51 @@
                 </label>
             </div>
 
-            <!-- Analysis Mode Toolbar (Active in Analysis Mode) -->
+            <!-- Analysis Mode Toolbar & Evaluation Graph (Active in Analysis Mode) -->
             <div id="analysis-controls-card" class="card" style="display: none;">
-                <div class="card-title">
-                    <span>Game Analysis Toolbar</span>
-                    <button id="btn-open-import" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">📥 Import PGN</button>
+                <div class="card-title" style="margin-bottom: 0.35rem;">
+                    <span>Game Review & Eval</span>
+                    <div style="display: flex; gap: 0.25rem;">
+                        <button id="btn-flip-analysis" class="btn" style="padding: 0.2rem 0.45rem; font-size: 0.7rem;">🔄 Flip</button>
+                        <button id="btn-open-import" class="btn btn-primary" style="padding: 0.2rem 0.45rem; font-size: 0.7rem;">📥 Import</button>
+                        <button id="btn-reset-storage" class="btn" style="padding: 0.2rem 0.45rem; font-size: 0.7rem; color: #f87171;" title="Clear local storage data">🗑️ Reset</button>
+                    </div>
                 </div>
 
                 <!-- Saved Games Dropdown Selector -->
-                <div style="margin-bottom: 0.75rem;">
-                    <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Saved Games Library</label>
-                    <select id="select-saved-games" class="select-field">
+                <div style="margin-bottom: 0.35rem;">
+                    <select id="select-saved-games" class="select-field" style="padding: 0.3rem 0.4rem; font-size: 0.75rem;">
                         <option value="">-- Select Saved Game --</option>
                     </select>
                 </div>
 
-                <!-- Overall Accuracy Score Cards -->
-                <div class="accuracy-grid">
-                    <div class="accuracy-card">
-                        <div class="accuracy-label">White Accuracy</div>
-                        <div id="white-accuracy-val" class="accuracy-val">94.5%</div>
-                    </div>
-                    <div class="accuracy-card">
-                        <div class="accuracy-label">Black Accuracy</div>
-                        <div id="black-accuracy-val" class="accuracy-val">82.1%</div>
-                    </div>
+                <!-- Interactive Evaluation Line Graph Canvas -->
+                <div class="eval-graph-container" style="margin-bottom: 0.35rem;" title="Click anywhere on graph to jump to that move!">
+                    <canvas id="eval-graph-canvas" class="eval-graph-canvas"></canvas>
                 </div>
 
-                <!-- Step-by-Step Scrubber Controls -->
-                <div class="control-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 0.75rem;">
-                    <button id="btn-first-move" class="btn" title="First Move">|&lt;</button>
-                    <button id="btn-prev-move" class="btn" title="Previous Move">&lt;</button>
-                    <button id="btn-next-move" class="btn" title="Next Move">&gt;</button>
-                    <button id="btn-last-move" class="btn" title="Last Move">&gt;|</button>
+                <!-- Accuracy Score Badges Bar & Move Scrubber -->
+                <div class="accuracy-scrubber-bar">
+                    <div class="accuracy-badge white-acc">
+                        <span class="acc-lbl">White</span>
+                        <span id="white-accuracy-val" class="acc-val">94.5%</span>
+                    </div>
+                    
+                    <div class="scrubber-btns">
+                        <button id="btn-first-move" class="btn btn-sm" title="First Move">|&lt;</button>
+                        <button id="btn-prev-move" class="btn btn-sm" title="Previous Move">&lt;</button>
+                        <button id="btn-next-move" class="btn btn-sm" title="Next Move">&gt;</button>
+                        <button id="btn-last-move" class="btn btn-sm" title="Last Move">&gt;|</button>
+                    </div>
+
+                    <div class="accuracy-badge black-acc">
+                        <span class="acc-lbl">Black</span>
+                        <span id="black-accuracy-val" class="acc-val">82.1%</span>
+                    </div>
                 </div>
 
                 <!-- Stockfish Best Move Recommendation Callout -->
-                <div id="recommendation-box" class="recommendation-box">
-                    <div class="recommendation-title">
-                        <span>🌟 Stockfish Recommendation</span>
-                    </div>
+                <div id="recommendation-box" class="recommendation-box" style="margin-top: 0.35rem; padding: 0.35rem 0.5rem;">
                     <div id="recommendation-text" class="recommendation-text">
                         Import a game to see Stockfish move recommendations and quality ratings.
                     </div>
@@ -160,12 +185,12 @@
             <div id="puzzles-controls-card" class="card" style="display: none;">
                 <div class="card-title">
                     <span>🧩 Puzzle Mode</span>
-                    <span id="puzzle-score-badge" style="font-size: 0.8rem; color: var(--accent-emerald); font-weight: 700;">Score: 0 / 0</span>
+                    <span id="puzzle-score-badge" style="font-size: 0.75rem; color: var(--accent-emerald); font-weight: 700;">Score: 0 / 0</span>
                 </div>
 
                 <div class="control-grid">
                     <div>
-                        <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Category</label>
+                        <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 3px;">Category</label>
                         <select id="select-puzzle-category" class="select-field">
                             <option value="mixed" selected>Mixed Tactics</option>
                             <option value="mate1">Checkmate in 1</option>
@@ -176,7 +201,7 @@
                         </select>
                     </div>
                     <div>
-                        <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Difficulty</label>
+                        <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 3px;">Difficulty</label>
                         <select id="select-puzzle-rating" class="select-field">
                             <option value="1200">Easy (~1000-1200)</option>
                             <option value="1600" selected>Medium (~1600)</option>
@@ -199,10 +224,10 @@
             </div>
 
             <!-- Move History Table & Badges -->
-            <div id="move-history-card" class="card" style="flex: 1; display: flex; flex-direction: column;">
+            <div id="move-history-card" class="card" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
                 <div class="card-title">
                     <span>Move History</span>
-                    <span id="move-count-text" style="font-size: 0.8rem; color: var(--text-muted);">0 Moves</span>
+                    <span id="move-count-text" style="font-size: 0.75rem; color: var(--text-muted);">0 Moves</span>
                 </div>
 
                 <div class="move-history-container">
@@ -228,12 +253,12 @@
     <div id="pgn-modal" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-title">Import Chess.com Game</div>
-            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 1rem;">
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
                 Paste your raw PGN text or downloaded Chess.com game notation below.
             </p>
             <textarea id="pgn-textarea" class="textarea-field" placeholder="[Event 'Live Chess']&#10;[Site 'Chess.com']&#10;1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5..."></textarea>
             
-            <div style="display: flex; gap: 0.75rem; justify-content: flex-end;">
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
                 <button id="btn-close-modal" class="btn">Cancel</button>
                 <button id="btn-submit-pgn" class="btn btn-primary">Analyze & Save Game</button>
             </div>
