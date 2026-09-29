@@ -215,6 +215,7 @@
                     <button id="btn-next-puzzle" class="btn btn-primary">⏭ Next Puzzle</button>
                     <button id="btn-puzzle-hint" class="btn">💡 Get Hint</button>
                 </div>
+                <button id="btn-puzzle-history" class="btn" style="width: 100%; margin-top: 0.5rem;">📊 Solved & Failed Puzzles Progress</button>
 
                 <div id="puzzle-feedback" class="recommendation-box" style="background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3);">
                     <div id="puzzle-description" class="recommendation-text" style="font-weight: 600;">
@@ -291,6 +292,45 @@
                 <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.5rem;">
                     <button id="btn-submit-pgn" class="btn btn-primary">Analyze & Save Game</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tactical Puzzles Progress Overview Modal -->
+    <div id="puzzle-history-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 580px;">
+            <div class="modal-title" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>🧩 Tactical Puzzles Progress Overview</span>
+                <button id="btn-close-puzzle-history" class="btn" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">✕</button>
+            </div>
+
+            <!-- Summary Chips Bar -->
+            <div class="puzzle-history-summary">
+                <div class="summary-chip chip-solved">
+                    <span class="chip-label">Solved</span>
+                    <span id="ph-solved-count" class="chip-val">0</span>
+                </div>
+                <div class="summary-chip chip-failed">
+                    <span class="chip-label">Failed</span>
+                    <span id="ph-failed-count" class="chip-val">0</span>
+                </div>
+                <div class="summary-chip chip-remaining">
+                    <span class="chip-label">Unattempted</span>
+                    <span id="ph-unattempted-count" class="chip-val">30</span>
+                </div>
+            </div>
+
+            <!-- Filter Navigation Sub-Tabs -->
+            <div class="import-tab-nav" style="margin-bottom: 0.6rem;">
+                <button id="ph-filter-all" class="import-tab-btn active">All (30)</button>
+                <button id="ph-filter-solved" class="import-tab-btn">✅ Solved (0)</button>
+                <button id="ph-filter-failed" class="import-tab-btn">❌ Failed (0)</button>
+                <button id="ph-filter-unattempted" class="import-tab-btn">⚪ Unattempted (30)</button>
+            </div>
+
+            <!-- Puzzles List Container -->
+            <div id="puzzle-history-list" class="chesscom-games-list" style="max-height: 300px;">
+                <!-- Populated dynamically -->
             </div>
         </div>
     </div>

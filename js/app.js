@@ -1144,6 +1144,158 @@ document.addEventListener('DOMContentLoaded', () => {
     selectPuzzleRating.addEventListener('change', loadNextPuzzle);
     btnNextPuzzle.addEventListener('click', loadNextPuzzleInSequence);
 
+    // --- Tactical Puzzles Progress Overview Modal & Filters ---
+    const btnPuzzleHistory = document.getElementById('btn-puzzle-history');
+    const puzzleHistoryModal = document.getElementById('puzzle-history-modal');
+    const btnClosePuzzleHistory = document.getElementById('btn-close-puzzle-history');
+    const puzzleHistoryList = document.getElementById('puzzle-history-list');
+
+    const phSolvedCount = document.getElementById('ph-solved-count');
+    const phFailedCount = document.getElementById('ph-failed-count');
+    const phUnattemptedCount = document.getElementById('ph-unattempted-count');
+
+    const phFilterAll = document.getElementById('ph-filter-all');
+    const phFilterSolved = document.getElementById('ph-filter-solved');
+    const phFilterFailed = document.getElementById('ph-filter-failed');
+    const phFilterUnattempted = document.getElementById('ph-filter-unattempted');
+
+    let currentPuzzleFilter = 'all';
+
+    if (btnPuzzleHistory && puzzleHistoryModal) {
+        btnPuzzleHistory.addEventListener('click', () => {
+            currentPuzzleFilter = 'all';
+            setActivePuzzleFilterBtn(phFilterAll);
+            puzzleHistoryModal.classList.add('active');
+            renderPuzzleHistoryModal();
+        });
+
+        if (btnClosePuzzleHistory) {
+            btnClosePuzzleHistory.addEventListener('click', () => {
+                puzzleHistoryModal.classList.remove('active');
+            });
+        }
+
+        const filterBtns = [
+            { btn: phFilterAll, filter: 'all' },
+            { btn: phFilterSolved, filter: 'solved' },
+            { btn: phFilterFailed, filter: 'failed' },
+            { btn: phFilterUnattempted, filter: 'unattempted' }
+        ];
+
+        filterBtns.forEach(({ btn, filter }) => {
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    currentPuzzleFilter = filter;
+                    setActivePuzzleFilterBtn(btn);
+                    renderPuzzleHistoryModal();
+                });
+            }
+        });
+    }
+
+    function setActivePuzzleFilterBtn(activeBtn) {
+        [phFilterAll, phFilterSolved, phFilterFailed, phFilterUnattempted].forEach(b => {
+            if (b) b.classList.remove('active');
+        });
+        if (activeBtn) activeBtn.classList.add('active');
+    }
+
+    function renderPuzzleHistoryModal() {
+        if (!puzzleHistoryList) return;
+
+        let solved = 0;
+        let failed = 0;
+        let unattempted = 0;
+
+        const allPuzzles = puzzleManager.puzzles;
+        allPuzzles.forEach(p => {
+            const st = puzzleManager.getPuzzleStatus(p.id);
+            if (st === 'solved') solved++;
+            else if (st === 'failed') failed++;
+            else unattempted++;
+        });
+
+        if (phSolvedCount) phSolvedCount.textContent = solved;
+        if (phFailedCount) phFailedCount.textContent = failed;
+        if (phUnattemptedCount) phUnattemptedCount.textContent = unattempted;
+
+        if (phFilterAll) phFilterAll.textContent = `All (${allPuzzles.length})`;
+        if (phFilterSolved) phFilterSolved.textContent = `✅ Solved (${solved})`;
+        if (phFilterFailed) phFilterFailed.textContent = `❌ Failed (${failed})`;
+        if (phFilterUnattempted) phFilterUnattempted.textContent = `⚪ Unattempted (${unattempted})`;
+
+        let displayPuzzles = allPuzzles;
+        if (currentPuzzleFilter === 'solved') {
+            displayPuzzles = allPuzzles.filter(p => puzzleManager.getPuzzleStatus(p.id) === 'solved');
+        } else if (currentPuzzleFilter === 'failed') {
+            displayPuzzles = allPuzzles.filter(p => puzzleManager.getPuzzleStatus(p.id) === 'failed');
+        } else if (currentPuzzleFilter === 'unattempted') {
+            displayPuzzles = allPuzzles.filter(p => puzzleManager.getPuzzleStatus(p.id) === 'unattempted');
+        }
+
+        puzzleHistoryList.innerHTML = '';
+
+        if (displayPuzzles.length === 0) {
+            puzzleHistoryList.innerHTML = `
+                <div style="text-align: center; color: var(--text-muted); padding: 1.5rem 0; font-size: 0.8rem;">
+                    No puzzles found for category filter "${currentPuzzleFilter}".
+                </div>
+            `;
+            return;
+        }
+
+        const categoryNames = {
+            'mate1': 'Checkmate in 1',
+            'mate2': 'Checkmate in 2',
+            'mate3': 'Checkmate in 3',
+            'material': 'Material Wins',
+            'endgame': 'Endgame Tactics'
+        };
+
+        displayPuzzles.forEach(p => {
+            const st = puzzleManager.getPuzzleStatus(p.id);
+            let statusBadge = '<span class="badge" style="background: rgba(100, 116, 139, 0.2); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.3);">⚪ Unattempted</span>';
+            let borderClass = 'puzzle-card-unattempted';
+
+            if (st === 'solved') {
+                statusBadge = '<span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">✅ Solved</span>';
+                borderClass = 'puzzle-card-solved';
+            } else if (st === 'failed') {
+                statusBadge = '<span class="badge" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4);">❌ Failed</span>';
+                borderClass = 'puzzle-card-failed';
+            }
+
+            const card = document.createElement('div');
+            card.className = `chesscom-game-card ${borderClass}`;
+            card.innerHTML = `
+                <div class="chesscom-game-main" style="flex: 1; margin-right: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 2px;">
+                        ${statusBadge}
+                        <span style="font-weight: 700; font-size: 0.82rem; color: var(--text-primary);">${p.title}</span>
+                    </div>
+                    <div class="chesscom-game-meta">
+                        <span>🏷️ ${categoryNames[p.category] || p.category}</span>
+                        <span>⭐ Rating: ${p.rating}</span>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-sm btn-play-puzzle-direct" style="padding: 0.25rem 0.6rem; font-size: 0.72rem; white-space: nowrap;">
+                    ▶ Play
+                </button>
+            `;
+
+            const btnPlay = card.querySelector('.btn-play-puzzle-direct');
+            btnPlay.addEventListener('click', () => {
+                puzzleManager.currentPuzzle = p;
+                puzzleManager.currentIndex = puzzleManager.puzzles.findIndex(item => item.id === p.id);
+                puzzleManager.moveIndex = 0;
+                displayPuzzle(p);
+                puzzleHistoryModal.classList.remove('active');
+            });
+
+            puzzleHistoryList.appendChild(card);
+        });
+    }
+
     btnPuzzleHint.addEventListener('click', () => {
         if (!puzzleManager.currentPuzzle || isPuzzleLocked) return;
         const expected = puzzleManager.currentPuzzle.moves[puzzleManager.moveIndex];

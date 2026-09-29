@@ -298,7 +298,50 @@ class PuzzleManager {
         this.currentPuzzle = null;
         this.currentIndex = 0;
         this.moveIndex = 0;
-        this.score = { solved: 0, failed: 0 };
+        this.statusMap = this.loadStatusFromStorage();
+        this.updateScoreFromStatus();
+    }
+
+    loadStatusFromStorage() {
+        try {
+            const raw = localStorage.getItem('chessapp_puzzle_status');
+            if (raw) return JSON.parse(raw);
+        } catch (e) {
+            console.warn('Failed reading puzzle status from storage:', e);
+        }
+        return {};
+    }
+
+    saveStatusToStorage() {
+        try {
+            localStorage.setItem('chessapp_puzzle_status', JSON.stringify(this.statusMap));
+        } catch (e) {
+            console.error('Failed saving puzzle status to storage:', e);
+        }
+    }
+
+    getPuzzleStatus(puzzleId) {
+        return this.statusMap[puzzleId] || 'unattempted';
+    }
+
+    setPuzzleStatus(puzzleId, status) {
+        if (!puzzleId) return;
+        // Solved status is permanent unless storage is reset
+        if (this.statusMap[puzzleId] === 'solved' && status === 'failed') return;
+        this.statusMap[puzzleId] = status;
+        this.saveStatusToStorage();
+        this.updateScoreFromStatus();
+    }
+
+    updateScoreFromStatus() {
+        let solved = 0;
+        let failed = 0;
+        this.puzzles.forEach(p => {
+            const st = this.getPuzzleStatus(p.id);
+            if (st === 'solved') solved++;
+            else if (st === 'failed') failed++;
+        });
+        this.score = { solved, failed };
     }
 
     getPuzzlesByCategory(category = 'mixed', maxRating = 3000) {
@@ -363,7 +406,7 @@ class PuzzleManager {
                 replyMove = this.currentPuzzle.moves[this.moveIndex];
                 this.moveIndex++;
             } else {
-                this.score.solved++;
+                this.setPuzzleStatus(this.currentPuzzle.id, 'solved');
             }
 
             return {
@@ -372,7 +415,7 @@ class PuzzleManager {
                 replyMove: replyMove
             };
         } else {
-            this.score.failed++;
+            this.setPuzzleStatus(this.currentPuzzle.id, 'failed');
             return {
                 valid: false,
                 expectedMove: expectedMove
