@@ -1067,9 +1067,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.addEventListener('keydown', (e) => {
+        if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
         if (currentMode !== 'analysis' || !analyzedGame) return;
-        if (e.key === 'ArrowLeft') jumpToAnalysisStep(analysisStep - 1);
-        else if (e.key === 'ArrowRight') jumpToAnalysisStep(analysisStep + 1);
+
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            jumpToAnalysisStep(analysisStep - 1);
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            jumpToAnalysisStep(analysisStep + 1);
+        } else if (e.key === 'ArrowUp' || e.key === 'Home') {
+            e.preventDefault();
+            jumpToAnalysisStep(0);
+        } else if (e.key === 'ArrowDown' || e.key === 'End') {
+            e.preventDefault();
+            jumpToAnalysisStep(analyzedGame.moves.length);
+        }
     });
 
     function jumpToAnalysisStep(stepIndex, skipLiveEval = false) {
