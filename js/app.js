@@ -62,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnNextMove = document.getElementById('btn-next-move');
     const btnLastMove = document.getElementById('btn-last-move');
     const recTextEl = document.getElementById('recommendation-text');
+    const btnBestMoveSim = document.getElementById('btn-best-move-sim');
 
     // Puzzles DOM
     const selectPuzzleCategory = document.getElementById('select-puzzle-category');
@@ -121,6 +122,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let analysisStep = 0;
     let gameEvalScores = []; // Array of numerical scores per move for graph
     let savedGames = loadSavedGamesFromStorage();
+    let simulationState = {
+        active: false,
+        startAnalysisStep: 0,
+        currentIndex: 0,
+        line: []
+    };
 
     // Puzzle & Promotion Lock State
     let isPuzzleLocked = false;
@@ -1059,16 +1066,245 @@ document.addEventListener('DOMContentLoaded', () => {
         calculateFullGameStockfishGraph(gameObj);
     }
 
-    btnFirstMove.addEventListener('click', () => jumpToAnalysisStep(0));
-    btnPrevMove.addEventListener('click', () => jumpToAnalysisStep(analysisStep - 1));
-    btnNextMove.addEventListener('click', () => jumpToAnalysisStep(analysisStep + 1));
+    // --- Best Move Simulation Mode Handlers ---
+    if (btnBestMoveSim) {
+        btnBestMoveSim.addEventListener('click', toggleBestMoveSimulation);
+    }
+
+    function toggleBestMoveSimulation() {
+        if (currentMode !== 'analysis' || !analyzedGame) return;
+        if (simulationState.active) {
+            exitBestMoveSimulation();
+        } else {
+            startBestMoveSimulation();
+        }
+    }
+
+    function startBestMoveSimulation() {
+        if (currentMode !== 'analysis' || !analyzedGame) return;
+
+        const startStep = analysisStep;
+        
+        recTextEl.innerHTML = `
+            <div class="sim-banner">
+                <div class="sim-banner-header">
+                    <span class="sim-banner-title">⚡ Best Move Simulation</span>
+                    <button id="btn-exit-sim" class="sim-exit-btn">✕ Cancel (Esc)</button>
+                </div>
+                <div style="font-size: 0.78rem; color: var(--text-muted); padding: 0.2rem 0;">
+                    ⏳ Stockfish is calculating the optimal continuation line...
+                </div>
+            </div>
+        `;
+        const btnExitLoading = document.getElementById('btn-exit-sim');
+        if (btnExitLoading) btnExitLoading.addEventListener('click', exitBestMoveSimulation);
+
+        const tempChess = new Chess();
+        for (let i = 0; i < startStep; i++) {
+            tempChess.move(analyzedGame.moves[i].san);
+        }
+
+        const startFen = tempChess.fen();
+
+        evalEngine.evaluatePosition(startFen, 14, (evalRes) => {
+            let pvMoves = (evalRes.pvLine && evalRes.pvLine.length > 0) ? [...evalRes.pvLine] : [];
+            if (pvMoves.length === 0 && evalRes.bestMove) {
+                pvMoves.push(evalRes.bestMove);
+            }
+
+            if (pvMoves.length === 0) {
+                recTextEl.innerHTML = `
+                    <div style="color: #f87171; font-size: 0.8rem; font-weight: 600;">
+                        ⚠️ Stockfish could not find a simulation line for this position.
+                    </div>
+                `;
+                return;
+            }
+
+            const simLine = [];
+            const simChess = new Chess();
+            simChess.load(startFen);
+
+            const playedGameMove = (startStep > 0 && startStep <= analyzedGame.moves.length) ? analyzedGame.moves[startStep - 1] : null;
+
+            // Step 0: Starting position
+            simLine.push({
+                fen: startFen,
+                lastMove: playedGameMove ? { from: playedGameMove.from, to: playedGameMove.to } : null,
+                nextMove: pvMoves[0] || null,
+                san: "Starting Position",
+                evalScore: evalRes.score,
+                explanation: playedGameMove && playedGameMove.quality ? 
+                    `The move played in game was <strong>${playedGameMove.san}</strong> (${playedGameMove.quality.icon} ${playedGameMove.quality.label}). Stockfish identifies a superior continuation line.` :
+                    `Stockfish optimal variation starting from Move ${startStep}.`
+            });
+
+            for (let i = 0; i < pvMoves.length && i < 6; i++) {
+                const uciMove = pvMoves[i];
+                const from = uciMove.substring(0, 2);
+                const to = uciMove.substring(2, 4);
+                const promo = uciMove.substring(4, 5) || 'q';
+
+                const moveObj = simChess.move({ from, to, promotion: promo });
+                if (!moveObj) break;
+
+                const stepFen = simChess.fen();
+                const nextUci = pvMoves[i + 1] || null;
+
+                let expText = "";
+                if (i === 0) {
+                    if (playedGameMove) {
+                        expText = `Stockfish recommends <strong>${moveObj.san}</strong> instead of game move <strong>${playedGameMove.san}</strong>, preserving an eval of <strong>${evalRes.score}</strong>.`;
+                    } else {
+                        expText = `Stockfish top choice <strong>${moveObj.san}</strong> controls key squares and maintains an eval of <strong>${evalRes.score}</strong>.`;
+                    }
+                } else {
+                    expText = `Optimal follow-up <strong>${moveObj.san}</strong> enforces tactical pressure and piece activity.`;
+                }
+
+                simLine.push({
+                    fen: stepFen,
+                    lastMove: { from: moveObj.from, to: moveObj.to },
+                    nextMove: nextUci,
+                    san: moveObj.san,
+                    evalScore: evalRes.score,
+                    explanation: expText
+                });
+            }
+
+            simulationState = {
+                active: true,
+                startAnalysisStep: startStep,
+                currentIndex: 0,
+                line: simLine
+            };
+
+            renderSimulationStep(0);
+        });
+    }
+
+    function renderSimulationStep(stepIdx) {
+        if (!simulationState.active || simulationState.line.length === 0) return;
+
+        const idx = Math.max(0, Math.min(stepIdx, simulationState.line.length - 1));
+        simulationState.currentIndex = idx;
+        const stepData = simulationState.line[idx];
+
+        chess.load(stepData.fen);
+
+        let inCheckSq = null;
+        if (chess.in_check()) {
+            const board = chess.board();
+            const turn = chess.turn();
+            for (let r = 0; r < 8; r++) {
+                for (let f = 0; f < 8; f++) {
+                    const p = board[r][f];
+                    if (p && p.type === 'k' && p.color === turn) {
+                        const files = ['a','b','c','d','e','f','g','h'];
+                        const ranks = ['8','7','6','5','4','3','2','1'];
+                        inCheckSq = files[f] + ranks[r];
+                    }
+                }
+            }
+        }
+
+        boardRenderer.renderBoard(chess, {
+            selectedSquare: null,
+            legalMoves: [],
+            lastMove: stepData.lastMove,
+            inCheckSquare: inCheckSq
+        });
+
+        boardRenderer.clearArrows();
+        if (stepData.nextMove) {
+            const from = stepData.nextMove.substring(0, 2);
+            const to = stepData.nextMove.substring(2, 4);
+            const arrowColor = (chess.turn() === 'w') ? '#10b981' : '#38bdf8';
+            boardRenderer.drawArrow(from, to, arrowColor, 14);
+        }
+
+        updateEvalBar(stepData.evalScore, false);
+        updateCapturedPiecesTracker();
+
+        recTextEl.innerHTML = `
+            <div class="sim-banner">
+                <div class="sim-banner-header">
+                    <span class="sim-banner-title">⚡ Best Move Simulation (${idx} / ${simulationState.line.length - 1})</span>
+                    <button id="btn-exit-sim" class="sim-exit-btn">✕ Exit (Esc)</button>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-primary); margin-bottom: 0.35rem;">
+                    ${stepData.explanation}
+                </div>
+                <div style="font-size: 0.72rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center;">
+                    <span>Press <strong>&lt; &gt; Arrow Keys</strong> or <strong>S / Space</strong> to scrub</span>
+                    <span style="color: var(--accent-emerald); font-weight: 700;">Eval: ${stepData.evalScore}</span>
+                </div>
+            </div>
+        `;
+
+        const btnExit = document.getElementById('btn-exit-sim');
+        if (btnExit) {
+            btnExit.addEventListener('click', exitBestMoveSimulation);
+        }
+    }
+
+    function exitBestMoveSimulation() {
+        if (!simulationState.active) return;
+        const returnStep = simulationState.startAnalysisStep;
+        simulationState.active = false;
+        simulationState.line = [];
+        jumpToAnalysisStep(returnStep);
+    }
+
+    btnFirstMove.addEventListener('click', () => {
+        if (simulationState.active) renderSimulationStep(0);
+        else jumpToAnalysisStep(0);
+    });
+    btnPrevMove.addEventListener('click', () => {
+        if (simulationState.active) renderSimulationStep(simulationState.currentIndex - 1);
+        else jumpToAnalysisStep(analysisStep - 1);
+    });
+    btnNextMove.addEventListener('click', () => {
+        if (simulationState.active) renderSimulationStep(simulationState.currentIndex + 1);
+        else jumpToAnalysisStep(analysisStep + 1);
+    });
     btnLastMove.addEventListener('click', () => {
-        if (analyzedGame) jumpToAnalysisStep(analyzedGame.moves.length);
+        if (simulationState.active) renderSimulationStep(simulationState.line.length - 1);
+        else if (analyzedGame) jumpToAnalysisStep(analyzedGame.moves.length);
     });
 
     document.addEventListener('keydown', (e) => {
         if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
         if (currentMode !== 'analysis' || !analyzedGame) return;
+
+        if (e.key === 's' || e.key === 'S') {
+            e.preventDefault();
+            toggleBestMoveSimulation();
+            return;
+        }
+
+        if (e.key === 'Escape' && simulationState.active) {
+            e.preventDefault();
+            exitBestMoveSimulation();
+            return;
+        }
+
+        if (simulationState.active) {
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                renderSimulationStep(simulationState.currentIndex - 1);
+            } else if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                renderSimulationStep(simulationState.currentIndex + 1);
+            } else if (e.key === 'ArrowUp' || e.key === 'Home') {
+                e.preventDefault();
+                renderSimulationStep(0);
+            } else if (e.key === 'ArrowDown' || e.key === 'End') {
+                e.preventDefault();
+                renderSimulationStep(simulationState.line.length - 1);
+            }
+            return;
+        }
 
         if (e.key === 'ArrowLeft') {
             e.preventDefault();
@@ -1087,6 +1323,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function jumpToAnalysisStep(stepIndex, skipLiveEval = false) {
         if (!analyzedGame) return;
+
+        if (simulationState.active) {
+            simulationState.active = false;
+            simulationState.line = [];
+        }
 
         analysisStep = Math.max(0, Math.min(stepIndex, analyzedGame.moves.length));
         chess.reset();

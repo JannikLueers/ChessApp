@@ -1139,3 +1139,47 @@ main {
         font-size: 0.85rem;
     }
 }
+
+/* Best Move Simulation Mode Styles */
+.sim-banner {
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.65rem;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+    transition: all 0.2s ease;
+}
+
+.sim-banner-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.35rem;
+}
+
+.sim-banner-title {
+    font-weight: 700;
+    color: var(--accent-emerald);
+    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.sim-exit-btn {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.72rem;
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.15s ease;
+}
+
+.sim-exit-btn:hover {
+    background: rgba(239, 68, 68, 0.3);
+    color: #ffffff;
+}
+

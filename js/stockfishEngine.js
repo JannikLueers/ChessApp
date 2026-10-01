@@ -3,7 +3,7 @@ class StockfishEngine {
     constructor() {
         this.worker = null;
         this.isReady = false;
-        this.currentEval = { score: "0.0", isMate: false, mateIn: 0, bestMove: null, multipv: [] };
+        this.currentEval = { score: "0.0", isMate: false, mateIn: 0, bestMove: null, multipv: [], pvLine: [] };
         this.onEvalCallback = null;
         this.evalSideToMove = 'w';
         this.init();
@@ -33,7 +33,7 @@ class StockfishEngine {
     }
 
     evaluatePosition(fen, depth = 12, callback = null, multiPVCount = 1) {
-        this.currentEval = { score: "0.0", isMate: false, mateIn: 0, bestMove: null, multipv: [] };
+        this.currentEval = { score: "0.0", isMate: false, mateIn: 0, bestMove: null, multipv: [], pvLine: [] };
         if (callback) this.onEvalCallback = callback;
         const parts = fen.split(' ');
         this.evalSideToMove = parts[1] || 'w'; // 'w' or 'b'
@@ -49,7 +49,7 @@ class StockfishEngine {
     }
 
     getBestMove(fen, depth = 12, callback = null) {
-        this.currentEval = { score: "0.0", isMate: false, mateIn: 0, bestMove: null, multipv: [] };
+        this.currentEval = { score: "0.0", isMate: false, mateIn: 0, bestMove: null, multipv: [], pvLine: [] };
         this.onBestMoveCallback = callback;
         const parts = fen.split(' ');
         this.evalSideToMove = parts[1] || 'w';
@@ -68,6 +68,7 @@ class StockfishEngine {
             const cpMatch = msg.match(/score cp (-?\d+)/);
             const mateMatch = msg.match(/score mate (-?\d+)/);
             const pvMatch = msg.match(/pv\s+([a-h][1-8][a-h][1-8][qrbn]?)/);
+            const fullPvMatch = msg.match(/pv\s+((?:[a-h][1-8][a-h][1-8][qrbn]?\s*)+)/);
 
             if (cpMatch) {
                 let rawCp = parseInt(cpMatch[1], 10);
@@ -90,6 +91,10 @@ class StockfishEngine {
                 this.currentEval.isMate = true;
                 this.currentEval.mateIn = mate;
                 this.currentEval.score = mate > 0 ? `#${mate}` : `#-${Math.abs(mate)}`;
+            }
+
+            if (fullPvMatch) {
+                this.currentEval.pvLine = fullPvMatch[1].trim().split(/\s+/).filter(m => m.length >= 4);
             }
 
             if (pvMatch) {
