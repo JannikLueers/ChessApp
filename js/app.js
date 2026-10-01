@@ -128,6 +128,12 @@ document.addEventListener('DOMContentLoaded', () => {
         currentIndex: 0,
         line: []
     };
+    let freeModeState = {
+        active: false,
+        startStep: 0,
+        currentIndex: 0,
+        branch: []
+    };
 
     // Puzzle & Promotion Lock State
     let isPuzzleLocked = false;
@@ -295,7 +301,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Square & Drag Interactions ---
     function handleSquareClick(sqName) {
-        if (currentMode === 'analysis') return;
+        if (currentMode === 'analysis') {
+            handleAnalysisSquareClick(sqName);
+            return;
+        }
 
         if (currentMode === 'puzzles') {
             if (isPuzzleLocked) return;
@@ -338,8 +347,48 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function handleAnalysisSquareClick(sqName) {
+        if (!analyzedGame) return;
+
+        if (selectedSquare === sqName) {
+            selectedSquare = null;
+            updateAnalysisBoardView();
+            return;
+        }
+
+        if (selectedSquare) {
+            const sideColor = chess.turn();
+            const isPromo = checkIsPromotionMove(selectedSquare, sqName);
+            if (isPromo) {
+                promptPawnPromotion(selectedSquare, sqName, sideColor, (chosenPiece) => {
+                    executeAnalysisFreeMove(selectedSquare, sqName, chosenPiece);
+                    selectedSquare = null;
+                });
+                return;
+            }
+
+            const moved = executeAnalysisFreeMove(selectedSquare, sqName, 'q');
+            if (moved) {
+                selectedSquare = null;
+                return;
+            }
+        }
+
+        const piece = chess.get(sqName);
+        if (piece) {
+            selectedSquare = sqName;
+            updateAnalysisBoardView();
+        } else {
+            selectedSquare = null;
+            updateAnalysisBoardView();
+        }
+    }
+
     function handlePieceDrop(fromSq, toSq) {
-        if (currentMode === 'analysis') return;
+        if (currentMode === 'analysis') {
+            handleAnalysisPieceDrop(fromSq, toSq);
+            return;
+        }
         
         if (currentMode === 'puzzles') {
             if (isPuzzleLocked) return;
@@ -359,6 +408,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         attemptMove(fromSq, toSq);
+        selectedSquare = null;
+    }
+
+    function handleAnalysisPieceDrop(fromSq, toSq) {
+        if (!analyzedGame) return;
+        const sideColor = chess.turn();
+        const isPromo = checkIsPromotionMove(fromSq, toSq);
+        if (isPromo) {
+            promptPawnPromotion(fromSq, toSq, sideColor, (chosenPiece) => {
+                executeAnalysisFreeMove(fromSq, toSq, chosenPiece);
+                selectedSquare = null;
+            });
+            return;
+        }
+
+        executeAnalysisFreeMove(fromSq, toSq, 'q');
         selectedSquare = null;
     }
 
@@ -603,7 +668,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Cursor Indicator for current analysisStep
         const currentStep = Math.min(analysisStep, totalMoves);
         const cursorX = (currentStep / totalMoves) * w;
-        ctx.strokeStyle = '#3b82f6';
+        ctx.strokeStyle = freeModeState.active ? 'rgba(59, 130, 246, 0.35)' : '#3b82f6';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(cursorX, 0);
@@ -616,13 +681,51 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentClamped = Math.min(Math.max(currentVal, -8), 8);
         const cursorY = zeroY - (currentClamped / 8) * (h / 2 - 6);
 
-        ctx.fillStyle = '#3b82f6';
+        ctx.fillStyle = freeModeState.active ? 'rgba(59, 130, 246, 0.35)' : '#3b82f6';
         ctx.beginPath();
         ctx.arc(cursorX, cursorY, 4.5, 0, Math.PI * 2);
         ctx.fill();
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1.5;
         ctx.stroke();
+
+        // Additional Free Mode Graph Line (Custom Variation Branch)
+        if (freeModeState.active && freeModeState.branch.length > 0) {
+            ctx.beginPath();
+            ctx.strokeStyle = '#c084fc'; // Vibrant purple
+            ctx.lineWidth = 2.5;
+
+            for (let k = 0; k < freeModeState.branch.length; k++) {
+                const stepIdx = freeModeState.startStep + k;
+                const x = (stepIdx / totalMoves) * w;
+                let val = (freeModeState.branch[k] && freeModeState.branch[k].score !== undefined) ? freeModeState.branch[k].score : 0;
+                if (isFlipped) val = -val;
+
+                const clampedVal = Math.min(Math.max(val, -8), 8);
+                const y = zeroY - (clampedVal / 8) * (h / 2 - 6);
+
+                if (k === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Free Mode Active Step Dot Indicator
+            const activeBranchIdx = freeModeState.currentIndex;
+            const activeStepIdx = freeModeState.startStep + activeBranchIdx;
+            const freeX = (activeStepIdx / totalMoves) * w;
+            let activeVal = (freeModeState.branch[activeBranchIdx] && freeModeState.branch[activeBranchIdx].score !== undefined) ? freeModeState.branch[activeBranchIdx].score : 0;
+            if (isFlipped) activeVal = -activeVal;
+            const activeClamped = Math.min(Math.max(activeVal, -8), 8);
+            const freeY = zeroY - (activeClamped / 8) * (h / 2 - 6);
+
+            ctx.fillStyle = '#c084fc';
+            ctx.beginPath();
+            ctx.arc(freeX, freeY, 5.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
     }
 
     // Click on Graph to Jump to Move
@@ -1256,20 +1359,185 @@ document.addEventListener('DOMContentLoaded', () => {
         jumpToAnalysisStep(returnStep);
     }
 
+    // --- Free Analysis Mode Handlers ---
+    function executeAnalysisFreeMove(from, to, promoPiece = 'q') {
+        const legalMoves = chess.moves({ square: from, verbose: true });
+        const targetMove = legalMoves.find(m => m.to === to);
+        if (!targetMove) return false;
+
+        if (!freeModeState.active) {
+            const startStep = analysisStep;
+            const startFen = chess.fen();
+            const startScore = (gameEvalScores && gameEvalScores[startStep] !== undefined) ? gameEvalScores[startStep] : 0;
+
+            if (simulationState.active) {
+                simulationState.active = false;
+                simulationState.line = [];
+            }
+
+            freeModeState = {
+                active: true,
+                startStep: startStep,
+                currentIndex: 0,
+                branch: [{
+                    fen: startFen,
+                    san: "Start",
+                    moveObj: null,
+                    score: startScore,
+                    bestMove: null
+                }]
+            };
+        }
+
+        const moveObj = chess.move({ from, to, promotion: promoPiece });
+        if (!moveObj) return false;
+
+        if (chess.in_check()) sounds.playCheck();
+        else if (moveObj.captured) sounds.playCapture();
+        else sounds.playMove();
+
+        const stepData = {
+            fen: chess.fen(),
+            san: moveObj.san,
+            moveObj: moveObj,
+            score: 0,
+            bestMove: null
+        };
+
+        freeModeState.branch.push(stepData);
+        freeModeState.currentIndex = freeModeState.branch.length - 1;
+
+        selectedSquare = null;
+        renderFreeModeStep(freeModeState.currentIndex);
+        return true;
+    }
+
+    function renderFreeModeStep(stepIdx) {
+        if (!freeModeState.active || freeModeState.branch.length === 0) return;
+
+        const idx = Math.max(0, Math.min(stepIdx, freeModeState.branch.length - 1));
+        freeModeState.currentIndex = idx;
+        const stepData = freeModeState.branch[idx];
+
+        chess.load(stepData.fen);
+
+        let inCheckSq = null;
+        if (chess.in_check()) {
+            const board = chess.board();
+            const turn = chess.turn();
+            for (let r = 0; r < 8; r++) {
+                for (let f = 0; f < 8; f++) {
+                    const p = board[r][f];
+                    if (p && p.type === 'k' && p.color === turn) {
+                        const files = ['a','b','c','d','e','f','g','h'];
+                        const ranks = ['8','7','6','5','4','3','2','1'];
+                        inCheckSq = files[f] + ranks[r];
+                    }
+                }
+            }
+        }
+
+        boardRenderer.renderBoard(chess, {
+            selectedSquare: selectedSquare,
+            legalMoves: selectedSquare ? chess.moves({ square: selectedSquare, verbose: true }) : [],
+            lastMove: stepData.moveObj ? { from: stepData.moveObj.from, to: stepData.moveObj.to } : null,
+            inCheckSquare: inCheckSq
+        });
+
+        boardRenderer.clearArrows();
+
+        evalEngine.evaluatePosition(chess.fen(), 14, (evalRes) => {
+            if (!freeModeState.active) return;
+
+            let numScore = parseFloat(evalRes.score) || 0;
+            if (evalRes.isMate) numScore = evalRes.score.includes('-') ? -10 : 10;
+            stepData.score = numScore;
+            stepData.bestMove = evalRes.bestMove;
+
+            updateEvalBar(evalRes.score, evalRes.isMate);
+            updateCapturedPiecesTracker();
+
+            if (evalRes.bestMove) {
+                const bFrom = evalRes.bestMove.substring(0, 2);
+                const bTo = evalRes.bestMove.substring(2, 4);
+                const arrowColor = (chess.turn() === 'w') ? '#10b981' : '#38bdf8';
+                boardRenderer.drawArrow(bFrom, bTo, arrowColor, 14);
+            }
+
+            recTextEl.innerHTML = `
+                <div class="sim-banner free-mode-banner" id="btn-exit-free-mode" style="cursor: pointer;" title="Click to exit Free Mode">
+                    <div class="sim-banner-header">
+                        <span class="sim-banner-title" style="color: #c084fc;">🎮 Free Mode Active (${idx} / ${freeModeState.branch.length - 1})</span>
+                        <button class="sim-exit-btn">✕ Exit Free Mode (Esc)</button>
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-primary); margin-bottom: 0.35rem;">
+                        ${stepData.moveObj ? `Custom move played: <strong>${stepData.san}</strong>.` : `Original position.`} Stockfish best move: <strong style="color: #38bdf8;">${evalRes.bestMove ? evalRes.bestMove.toUpperCase() : 'N/A'}</strong>
+                    </div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center;">
+                        <span>Click banner or press <strong>ESC</strong> to exit.</span>
+                        <span style="color: #c084fc; font-weight: 700;">Eval: ${evalRes.score}</span>
+                    </div>
+                </div>
+            `;
+
+            const btnExitFree = document.getElementById('btn-exit-free-mode');
+            if (btnExitFree) {
+                btnExitFree.addEventListener('click', exitFreeMode);
+            }
+
+            drawEvalGraph();
+        });
+    }
+
+    function exitFreeMode() {
+        if (!freeModeState.active) return;
+        const returnStep = freeModeState.startStep;
+        freeModeState.active = false;
+        freeModeState.branch = [];
+        jumpToAnalysisStep(returnStep);
+    }
+
+    function updateAnalysisBoardView() {
+        if (freeModeState.active) {
+            renderFreeModeStep(freeModeState.currentIndex);
+        } else if (simulationState.active) {
+            renderSimulationStep(simulationState.currentIndex);
+        } else {
+            jumpToAnalysisStep(analysisStep);
+        }
+    }
+
     btnFirstMove.addEventListener('click', () => {
-        if (simulationState.active) renderSimulationStep(0);
+        if (freeModeState.active) renderFreeModeStep(0);
+        else if (simulationState.active) renderSimulationStep(0);
         else jumpToAnalysisStep(0);
     });
     btnPrevMove.addEventListener('click', () => {
-        if (simulationState.active) renderSimulationStep(simulationState.currentIndex - 1);
+        if (freeModeState.active) {
+            if (freeModeState.currentIndex > 0) renderFreeModeStep(freeModeState.currentIndex - 1);
+            else exitFreeMode();
+        } else if (simulationState.active) renderSimulationStep(simulationState.currentIndex - 1);
         else jumpToAnalysisStep(analysisStep - 1);
     });
     btnNextMove.addEventListener('click', () => {
-        if (simulationState.active) renderSimulationStep(simulationState.currentIndex + 1);
+        if (freeModeState.active) {
+            if (freeModeState.currentIndex < freeModeState.branch.length - 1) {
+                renderFreeModeStep(freeModeState.currentIndex + 1);
+            } else {
+                const currentStep = freeModeState.branch[freeModeState.currentIndex];
+                if (currentStep && currentStep.bestMove) {
+                    const from = currentStep.bestMove.substring(0, 2);
+                    const to = currentStep.bestMove.substring(2, 4);
+                    const promo = currentStep.bestMove.substring(4, 5) || 'q';
+                    executeAnalysisFreeMove(from, to, promo);
+                }
+            }
+        } else if (simulationState.active) renderSimulationStep(simulationState.currentIndex + 1);
         else jumpToAnalysisStep(analysisStep + 1);
     });
     btnLastMove.addEventListener('click', () => {
-        if (simulationState.active) renderSimulationStep(simulationState.line.length - 1);
+        if (freeModeState.active) renderFreeModeStep(freeModeState.branch.length - 1);
+        else if (simulationState.active) renderSimulationStep(simulationState.line.length - 1);
         else if (analyzedGame) jumpToAnalysisStep(analyzedGame.moves.length);
     });
 
@@ -1283,9 +1551,43 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (e.key === 'Escape' && simulationState.active) {
-            e.preventDefault();
-            exitBestMoveSimulation();
+        if (e.key === 'Escape') {
+            if (freeModeState.active) {
+                e.preventDefault();
+                exitFreeMode();
+                return;
+            } else if (simulationState.active) {
+                e.preventDefault();
+                exitBestMoveSimulation();
+                return;
+            }
+        }
+
+        if (freeModeState.active) {
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                if (freeModeState.currentIndex > 0) renderFreeModeStep(freeModeState.currentIndex - 1);
+                else exitFreeMode();
+            } else if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                if (freeModeState.currentIndex < freeModeState.branch.length - 1) {
+                    renderFreeModeStep(freeModeState.currentIndex + 1);
+                } else {
+                    const currentStep = freeModeState.branch[freeModeState.currentIndex];
+                    if (currentStep && currentStep.bestMove) {
+                        const from = currentStep.bestMove.substring(0, 2);
+                        const to = currentStep.bestMove.substring(2, 4);
+                        const promo = currentStep.bestMove.substring(4, 5) || 'q';
+                        executeAnalysisFreeMove(from, to, promo);
+                    }
+                }
+            } else if (e.key === 'ArrowUp' || e.key === 'Home') {
+                e.preventDefault();
+                renderFreeModeStep(0);
+            } else if (e.key === 'ArrowDown' || e.key === 'End') {
+                e.preventDefault();
+                renderFreeModeStep(freeModeState.branch.length - 1);
+            }
             return;
         }
 
@@ -1323,6 +1625,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function jumpToAnalysisStep(stepIndex, skipLiveEval = false) {
         if (!analyzedGame) return;
+
+        if (freeModeState.active) {
+            freeModeState.active = false;
+            freeModeState.branch = [];
+        }
 
         if (simulationState.active) {
             simulationState.active = false;
