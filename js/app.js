@@ -274,9 +274,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function checkIsPromotionMove(from, to) {
         const piece = chess.get(from);
         if (!piece || piece.type !== 'p') return false;
-        if (piece.color === 'w' && to[1] === '8') return true;
-        if (piece.color === 'b' && to[1] === '1') return true;
-        return false;
+        if (piece.color === 'w' && to[1] !== '8') return false;
+        if (piece.color === 'b' && to[1] !== '1') return false;
+
+        const legalMoves = chess.moves({ square: from, verbose: true });
+        return legalMoves.some(m => m.to === to);
     }
 
     function promptPawnPromotion(from, to, color, callback) {
@@ -375,7 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const piece = chess.get(sqName);
-        if (piece) {
+        if (piece && piece.color === chess.turn()) {
             selectedSquare = sqName;
             updateAnalysisBoardView();
         } else {
