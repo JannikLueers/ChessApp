@@ -7,12 +7,26 @@ class BoardRenderer {
         this.selectedSquare = null;
         this.legalMoves = [];
         this.lastMove = null;
-        this.inCheckSquare = null;
         this.onSquareClick = options.onSquareClick || null;
+        this.onPiecePickup = options.onPiecePickup || null;
         this.onPieceDrop = options.onPieceDrop || null;
+        this.onDragCancel = options.onDragCancel || null;
 
         this.draggedPiece = null;
         this.draggedFrom = null;
+        this.dragSuccessful = false;
+
+        // Custom Pointer / Touch Drag State
+        this.isPointerDragging = false;
+        this.pointerDragFromSq = null;
+        this.dragGhostEl = null;
+        this.pointerDragMovedFar = false;
+        this.pointerDragStart = { x: 0, y: 0 };
+        this.dragPieceWidth = 0;
+        this.dragPieceHeight = 0;
+        this.boardWrapperRect = null;
+        this.boardWrapper = this.boardEl.closest('.board-wrapper');
+        this.dragLayer = document.getElementById('drag-piece-layer');
 
         // Custom Right-Click Field Marking & Arrow State
         this.markedSquares = new Set();
@@ -25,6 +39,7 @@ class BoardRenderer {
 
         this.setupBoardDOM();
         this.setupRightClickHandlers();
+        this.setupPointerDragHandlers();
     }
 
     setupBoardDOM() {
@@ -59,9 +74,11 @@ class BoardRenderer {
                 }
 
                 // Event Listeners
-                sqEl.addEventListener('click', (e) => this.handleSquareClick(sqName));
-                sqEl.addEventListener('dragover', (e) => e.preventDefault());
-                sqEl.addEventListener('drop', (e) => this.handleDrop(e, sqName));
+                sqEl.addEventListener('click', (e) => {
+                    if (!e.target.closest('.piece-container')) {
+                        this.handleSquareClick(sqName);
+                    }
+                });
 
                 this.boardEl.appendChild(sqEl);
             }
@@ -144,6 +161,180 @@ class BoardRenderer {
         });
     }
 
+    setupPointerDragHandlers() {
+        window.addEventListener('mousemove', (e) => {
+            if (this.isPointerDragging && this.dragGhostEl && this.boardWrapperRect) {
+                const x = e.clientX - this.boardWrapperRect.left - this.dragPieceWidth / 2;
+                const y = e.clientY - this.boardWrapperRect.top - this.dragPieceHeight / 2;
+                this.dragGhostEl.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+
+                const dx = e.clientX - this.pointerDragStart.x;
+                const dy = e.clientY - this.pointerDragStart.y;
+                if (Math.hypot(dx, dy) > 5) {
+                    this.pointerDragMovedFar = true;
+                }
+            }
+        });
+
+        window.addEventListener('mouseup', (e) => {
+            if (e.button === 0 && this.isPointerDragging) {
+                this.endPointerDrag(e.clientX, e.clientY);
+            }
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            if (this.isPointerDragging && this.dragGhostEl && this.boardWrapperRect && e.touches.length > 0) {
+                const touch = e.touches[0];
+                const x = touch.clientX - this.boardWrapperRect.left - this.dragPieceWidth / 2;
+                const y = touch.clientY - this.boardWrapperRect.top - this.dragPieceHeight / 2;
+                this.dragGhostEl.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+
+                const dx = touch.clientX - this.pointerDragStart.x;
+                const dy = touch.clientY - this.pointerDragStart.y;
+                if (Math.hypot(dx, dy) > 5) {
+                    this.pointerDragMovedFar = true;
+                }
+            }
+        }, { passive: true });
+
+        window.addEventListener('touchend', (e) => {
+            if (this.isPointerDragging) {
+                const touch = e.changedTouches[0];
+                if (touch) {
+                    this.endPointerDrag(touch.clientX, touch.clientY);
+                } else {
+                    this.cancelPointerDrag();
+                }
+            }
+        });
+    }
+
+    startPointerDrag(sqName, pieceContainer, clientX, clientY) {
+        if (this.isPointerDragging) {
+            this.cancelPointerDrag();
+        }
+
+        if (this.onPiecePickup) {
+            const allowed = this.onPiecePickup(sqName);
+            if (allowed === false) {
+                return;
+            }
+        }
+
+        this.isPointerDragging = true;
+        this.pointerDragFromSq = sqName;
+        this.pointerDragMovedFar = false;
+        this.pointerDragStart = { x: clientX, y: clientY };
+
+        // After this.onPiecePickup(sqName), updateUI() re-rendered the board, so let's get the fresh container
+        const currentContainer = this.boardEl.querySelector(`[data-square="${sqName}"] .piece-container`) || pieceContainer;
+
+        const rect = currentContainer.getBoundingClientRect();
+        this.dragPieceWidth = rect.width > 0 ? rect.width : 50;
+        this.dragPieceHeight = rect.height > 0 ? rect.height : 50;
+
+        if (!this.boardWrapper) {
+            this.boardWrapper = this.boardEl.closest('.board-wrapper');
+        }
+        if (!this.dragLayer) {
+            this.dragLayer = document.getElementById('drag-piece-layer');
+        }
+
+        const bRect = this.boardWrapper ? this.boardWrapper.getBoundingClientRect() : { left: 0, top: 0 };
+        this.boardWrapperRect = bRect;
+
+        const startX = clientX - bRect.left - this.dragPieceWidth / 2;
+        const startY = clientY - bRect.top - this.dragPieceHeight / 2;
+
+        this.dragGhostEl = document.createElement('div');
+        this.dragGhostEl.className = 'drag-floating-piece';
+        this.dragGhostEl.innerHTML = currentContainer.innerHTML;
+        this.dragGhostEl.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: ${this.dragPieceWidth}px;
+            height: ${this.dragPieceHeight}px;
+            transform: translate3d(${startX}px, ${startY}px, 0);
+            pointer-events: none;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            filter: drop-shadow(0 14px 28px rgba(0, 0, 0, 0.85));
+            opacity: 1;
+            visibility: visible;
+        `;
+
+        const svgEl = this.dragGhostEl.querySelector('svg');
+        if (svgEl) {
+            svgEl.style.cssText = 'width: 100%; height: 100%; display: block; pointer-events: none; opacity: 1; visibility: visible;';
+        }
+
+        if (this.dragLayer) {
+            this.dragLayer.appendChild(this.dragGhostEl);
+        } else if (this.boardWrapper) {
+            this.boardWrapper.appendChild(this.dragGhostEl);
+        }
+
+        currentContainer.classList.add('dragging-original');
+    }
+
+    endPointerDrag(clientX, clientY) {
+        if (!this.isPointerDragging) return;
+
+        this.isPointerDragging = false;
+
+        if (this.dragGhostEl) {
+            this.dragGhostEl.remove();
+            this.dragGhostEl = null;
+        }
+
+        const pieces = this.boardEl.querySelectorAll('.piece-container');
+        pieces.forEach(p => p.classList.remove('dragging-original'));
+
+        const fromSq = this.pointerDragFromSq;
+        this.pointerDragFromSq = null;
+        this.boardWrapperRect = null;
+
+        if (!fromSq) return;
+
+        if (this.pointerDragMovedFar) {
+            const targetEl = document.elementFromPoint(clientX, clientY);
+            const sqEl = targetEl ? targetEl.closest('.square') : null;
+            const toSq = sqEl ? sqEl.dataset.square : null;
+
+            if (this.onPieceDrop) {
+                this.onPieceDrop(fromSq, toSq);
+            } else if (this.onDragCancel) {
+                this.onDragCancel(fromSq);
+            }
+        } else {
+            if (this.onSquareClick) {
+                this.onSquareClick(fromSq);
+            }
+        }
+    }
+
+    cancelPointerDrag() {
+        const fromSq = this.pointerDragFromSq;
+        this.isPointerDragging = false;
+
+        if (this.dragGhostEl) {
+            this.dragGhostEl.remove();
+            this.dragGhostEl = null;
+        }
+
+        const pieces = this.boardEl.querySelectorAll('.piece-container');
+        pieces.forEach(p => p.classList.remove('dragging-original'));
+
+        this.pointerDragFromSq = null;
+        this.boardWrapperRect = null;
+        if (fromSq && this.onDragCancel) {
+            this.onDragCancel(fromSq);
+        }
+    }
+
     clearUserMarkings() {
         this.markedSquares.clear();
         this.userArrows.clear();
@@ -212,7 +403,7 @@ class BoardRenderer {
                 }
 
                 // Clear piece, overlays, badges
-                const existingPiece = sqEl.querySelector('.piece-svg');
+                const existingPiece = sqEl.querySelector('.piece-container, .piece-svg');
                 if (existingPiece) existingPiece.remove();
                 const existingDot = sqEl.querySelector('.move-dot, .capture-ring');
                 if (existingDot) existingDot.remove();
@@ -234,16 +425,28 @@ class BoardRenderer {
                 if (piece) {
                     const svgHtml = getPieceSVG(piece.color, piece.type);
                     const pieceContainer = document.createElement('div');
-                    pieceContainer.className = 'piece-svg';
+                    pieceContainer.className = 'piece-container';
                     pieceContainer.innerHTML = svgHtml;
-                    pieceContainer.draggable = true;
+                    pieceContainer.draggable = false;
 
-                    pieceContainer.addEventListener('dragstart', (e) => {
-                        this.draggedPiece = piece;
-                        this.draggedFrom = sqName;
-                        e.dataTransfer.setData('text/plain', sqName);
-                        if (this.onSquareClick) this.onSquareClick(sqName);
+                    pieceContainer.addEventListener('dragstart', (e) => e.preventDefault());
+
+                    pieceContainer.addEventListener('mousedown', (e) => {
+                        if (e.button === 0) {
+                            e.stopPropagation();
+                            this.clearUserMarkings();
+                            this.startPointerDrag(sqName, pieceContainer, e.clientX, e.clientY);
+                        }
                     });
+
+                    pieceContainer.addEventListener('touchstart', (e) => {
+                        if (e.touches.length === 1) {
+                            e.stopPropagation();
+                            this.clearUserMarkings();
+                            const touch = e.touches[0];
+                            this.startPointerDrag(sqName, pieceContainer, touch.clientX, touch.clientY);
+                        }
+                    }, { passive: true });
 
                     sqEl.appendChild(pieceContainer);
                 }
@@ -280,6 +483,7 @@ class BoardRenderer {
 
     handleDrop(e, toSquare) {
         e.preventDefault();
+        this.dragSuccessful = true;
         const fromSquare = e.dataTransfer.getData('text/plain') || this.draggedFrom;
         if (fromSquare && this.onPieceDrop) {
             this.onPieceDrop(fromSquare, toSquare);

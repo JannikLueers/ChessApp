@@ -142,7 +142,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Board Renderer Initialization
     const boardRenderer = new BoardRenderer(boardEl, svgOverlayEl, {
         onSquareClick: handleSquareClick,
-        onPieceDrop: handlePieceDrop
+        onPiecePickup: handlePiecePickup,
+        onPieceDrop: handlePieceDrop,
+        onDragCancel: handleDragCancel
     });
 
     evalEngine.setSkillLevel(20, 3000);
@@ -302,6 +304,60 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Square & Drag Interactions ---
+    let wasSelectedBeforePickup = false;
+
+    function isLegalMove(from, to) {
+        if (!from || !to || from === to) return false;
+        const legalMoves = chess.moves({ square: from, verbose: true });
+        return legalMoves.some(m => m.to === to);
+    }
+
+    function handlePiecePickup(sqName) {
+        if (currentMode === 'analysis') {
+            if (!analyzedGame) return false;
+            const piece = chess.get(sqName);
+            if (piece && piece.color === chess.turn()) {
+                wasSelectedBeforePickup = (selectedSquare === sqName);
+                selectedSquare = sqName;
+                updateAnalysisBoardView();
+                return true;
+            }
+            return false;
+        }
+
+        if (currentMode === 'puzzles') {
+            if (isPuzzleLocked) return false;
+            const piece = chess.get(sqName);
+            if (piece && piece.color === chess.turn()) {
+                wasSelectedBeforePickup = (selectedSquare === sqName);
+                selectedSquare = sqName;
+                updateUI();
+                return true;
+            }
+            return false;
+        }
+
+        if (chess.turn() !== playerColor) return false;
+
+        const piece = chess.get(sqName);
+        if (piece && piece.color === playerColor) {
+            wasSelectedBeforePickup = (selectedSquare === sqName);
+            selectedSquare = sqName;
+            updateUI();
+            return true;
+        }
+        return false;
+    }
+
+    function handleDragCancel(fromSq) {
+        selectedSquare = fromSq;
+        if (currentMode === 'analysis') {
+            updateAnalysisBoardView();
+        } else {
+            updateUI();
+        }
+    }
+
     function handleSquareClick(sqName) {
         if (currentMode === 'analysis') {
             handleAnalysisSquareClick(sqName);
@@ -316,26 +372,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (chess.turn() !== playerColor) return;
 
-        if (selectedSquare === sqName) {
+        if (selectedSquare === sqName && wasSelectedBeforePickup) {
             selectedSquare = null;
+            wasSelectedBeforePickup = false;
             updateUI();
+            return;
+        }
+        if (selectedSquare === sqName && !wasSelectedBeforePickup) {
             return;
         }
 
         if (selectedSquare) {
-            const isPromo = checkIsPromotionMove(selectedSquare, sqName);
-            if (isPromo) {
-                promptPawnPromotion(selectedSquare, sqName, playerColor, (chosenPiece) => {
-                    executeMoveWithPromotion(selectedSquare, sqName, chosenPiece);
-                    selectedSquare = null;
-                });
-                return;
-            }
+            if (isLegalMove(selectedSquare, sqName)) {
+                const isPromo = checkIsPromotionMove(selectedSquare, sqName);
+                if (isPromo) {
+                    promptPawnPromotion(selectedSquare, sqName, playerColor, (chosenPiece) => {
+                        executeMoveWithPromotion(selectedSquare, sqName, chosenPiece);
+                        selectedSquare = null;
+                    });
+                    return;
+                }
 
-            const move = attemptMove(selectedSquare, sqName);
-            if (move) {
-                selectedSquare = null;
-                return;
+                const move = attemptMove(selectedSquare, sqName);
+                if (move) {
+                    selectedSquare = null;
+                    return;
+                }
             }
         }
 
@@ -352,27 +414,33 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleAnalysisSquareClick(sqName) {
         if (!analyzedGame) return;
 
-        if (selectedSquare === sqName) {
+        if (selectedSquare === sqName && wasSelectedBeforePickup) {
             selectedSquare = null;
+            wasSelectedBeforePickup = false;
             updateAnalysisBoardView();
+            return;
+        }
+        if (selectedSquare === sqName && !wasSelectedBeforePickup) {
             return;
         }
 
         if (selectedSquare) {
-            const sideColor = chess.turn();
-            const isPromo = checkIsPromotionMove(selectedSquare, sqName);
-            if (isPromo) {
-                promptPawnPromotion(selectedSquare, sqName, sideColor, (chosenPiece) => {
-                    executeAnalysisFreeMove(selectedSquare, sqName, chosenPiece);
-                    selectedSquare = null;
-                });
-                return;
-            }
+            if (isLegalMove(selectedSquare, sqName)) {
+                const sideColor = chess.turn();
+                const isPromo = checkIsPromotionMove(selectedSquare, sqName);
+                if (isPromo) {
+                    promptPawnPromotion(selectedSquare, sqName, sideColor, (chosenPiece) => {
+                        executeAnalysisFreeMove(selectedSquare, sqName, chosenPiece);
+                        selectedSquare = null;
+                    });
+                    return;
+                }
 
-            const moved = executeAnalysisFreeMove(selectedSquare, sqName, 'q');
-            if (moved) {
-                selectedSquare = null;
-                return;
+                const moved = executeAnalysisFreeMove(selectedSquare, sqName, 'q');
+                if (moved) {
+                    selectedSquare = null;
+                    return;
+                }
             }
         }
 
@@ -394,11 +462,22 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (currentMode === 'puzzles') {
             if (isPuzzleLocked) return;
-            attemptPuzzleMove(fromSq, toSq);
+            handlePuzzlePieceDrop(fromSq, toSq);
             return;
         }
 
-        if (chess.turn() !== playerColor) return;
+        if (chess.turn() !== playerColor) {
+            selectedSquare = null;
+            updateUI();
+            return;
+        }
+
+        // Dropped on original square or illegal square: keep selected and return piece to original position
+        if (!fromSq || !toSq || fromSq === toSq || !isLegalMove(fromSq, toSq)) {
+            selectedSquare = fromSq;
+            updateUI();
+            return;
+        }
 
         const isPromo = checkIsPromotionMove(fromSq, toSq);
         if (isPromo) {
@@ -415,6 +494,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleAnalysisPieceDrop(fromSq, toSq) {
         if (!analyzedGame) return;
+
+        // Dropped on original square or illegal square: keep selected and return piece to original position
+        if (!fromSq || !toSq || fromSq === toSq || !isLegalMove(fromSq, toSq)) {
+            selectedSquare = fromSq;
+            updateAnalysisBoardView();
+            return;
+        }
+
         const sideColor = chess.turn();
         const isPromo = checkIsPromotionMove(fromSq, toSq);
         if (isPromo) {
@@ -426,6 +513,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         executeAnalysisFreeMove(fromSq, toSq, 'q');
+        selectedSquare = null;
+    }
+
+    function handlePuzzlePieceDrop(fromSq, toSq) {
+        if (!fromSq || !toSq || fromSq === toSq || !isLegalMove(fromSq, toSq)) {
+            selectedSquare = fromSq;
+            updateUI();
+            return;
+        }
+
+        attemptPuzzleMove(fromSq, toSq);
         selectedSquare = null;
     }
 
@@ -1871,9 +1969,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function handlePuzzleSquareClick(sqName) {
-        if (selectedSquare === sqName) {
+        if (selectedSquare === sqName && wasSelectedBeforePickup) {
             selectedSquare = null;
+            wasSelectedBeforePickup = false;
             updateUI();
+            return;
+        }
+        if (selectedSquare === sqName && !wasSelectedBeforePickup) {
             return;
         }
 
