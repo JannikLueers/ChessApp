@@ -122,15 +122,125 @@ class StockfishEngine {
         }
     }
 
-    static classifyMove(prevEvalScore, newEvalScore, isWhiteTurn) {
-        const p1 = parseFloat(prevEvalScore) || 0;
-        const p2 = parseFloat(newEvalScore) || 0;
-        const delta = isWhiteTurn ? (p2 - p1) : (p1 - p2);
+    static parseScoreToNumeric(scoreStr) {
+        if (!scoreStr) return 0;
+        if (typeof scoreStr === 'number') return scoreStr;
+        const str = String(scoreStr).trim();
+        if (str.startsWith('#')) {
+            const mateVal = parseInt(str.substring(1), 10) || 0;
+            return mateVal >= 0 ? 10 : -10;
+        }
+        return parseFloat(str) || 0;
+    }
 
-        if (delta >= -0.2) return { label: 'Best Move', badgeClass: 'badge-best', icon: '🌟' };
-        if (delta >= -0.6) return { label: 'Good Move', badgeClass: 'badge-good', icon: '👍' };
-        if (delta >= -1.5) return { label: 'Inaccuracy', badgeClass: 'badge-inaccuracy', icon: '⚠️' };
-        if (delta >= -3.0) return { label: 'Mistake', badgeClass: 'badge-mistake', icon: '❌' };
+    static classifyMove(prevEvalScore, newEvalScore, isWhiteTurn, moveObj = null, movesHistory = []) {
+        const prevNum = StockfishEngine.parseScoreToNumeric(prevEvalScore);
+        const currNum = StockfishEngine.parseScoreToNumeric(newEvalScore);
+
+        // Win Probability Model (White's perspective vs Black's perspective)
+        const prevWinProbWhite = 1 / (1 + Math.pow(10, -prevNum / 4));
+        const currWinProbWhite = 1 / (1 + Math.pow(10, -currNum / 4));
+
+        let prevWinProb = isWhiteTurn ? prevWinProbWhite : (1 - prevWinProbWhite);
+        let currWinProb = isWhiteTurn ? currWinProbWhite : (1 - currWinProbWhite);
+        let drop = Math.max(0, prevWinProb - currWinProb);
+
+        // 1. Opening Book / Theory Check
+        if (movesHistory && movesHistory.length > 0 && typeof OpeningTheory !== 'undefined') {
+            const theory = OpeningTheory.getTheoryAtStep(movesHistory);
+            if (theory && drop <= 0.10) {
+                return {
+                    label: theory.fullLabel,
+                    badgeClass: 'badge-theory',
+                    icon: '📖',
+                    isTheory: true,
+                    openingName: theory.openingName
+                };
+            }
+        }
+
+        // 2. Brilliant Move (!!) Detection
+        // Piece sacrifice for winning advantage or checkmate
+        const isWinningForMover = isWhiteTurn ? (currNum >= 1.0) : (currNum <= -1.0);
+        const isSacrifice = StockfishEngine.detectPieceSacrifice(moveObj);
+
+        if (isSacrifice && isWinningForMover && drop <= 0.03) {
+            return {
+                label: 'Brilliant Move',
+                badgeClass: 'badge-brilliant',
+                icon: '💎',
+                isBrilliant: true
+            };
+        }
+
+        // 3. Great Move (!) Detection
+        // Turning an equal/difficult position into a winning breakthrough or saving a lost position
+        if (drop <= 0.02) {
+            const prevAdvantage = isWhiteTurn ? prevNum : -prevNum;
+            const currAdvantage = isWhiteTurn ? currNum : -currNum;
+            if (prevAdvantage <= 0.5 && currAdvantage >= 2.5) {
+                return { label: 'Great Move', badgeClass: 'badge-great', icon: '🎯' };
+            }
+            if (prevWinProb <= 0.30 && currWinProb >= 0.50) {
+                return { label: 'Great Move', badgeClass: 'badge-great', icon: '🎯' };
+            }
+        }
+
+        // 4. Missed Win Detection
+        if (prevWinProb >= 0.85 && drop >= 0.30) {
+            return { label: 'Missed Win', badgeClass: 'badge-miss', icon: '⚡' };
+        }
+
+        // 5. Standard Empirical Precision Categories (Balanced & Non-Pessimistic)
+        if (drop <= 0.02) return { label: 'Best Move', badgeClass: 'badge-best', icon: '🌟' };
+        if (drop <= 0.05) return { label: 'Excellent Move', badgeClass: 'badge-excellent', icon: '✨' };
+        if (drop <= 0.10) return { label: 'Good Move', badgeClass: 'badge-good', icon: '👍' };
+        if (drop <= 0.20) return { label: 'Inaccuracy', badgeClass: 'badge-inaccuracy', icon: '⚠️' };
+        if (drop <= 0.35) return { label: 'Mistake', badgeClass: 'badge-mistake', icon: '❌' };
         return { label: 'Blunder', badgeClass: 'badge-blunder', icon: '💥' };
     }
+
+    static detectPieceSacrifice(moveObj) {
+        if (!moveObj) return false;
+        const san = moveObj.san || '';
+        const piece = moveObj.piece || (san.length > 0 && ['N','B','R','Q','K'].includes(san[0]) ? san[0].toLowerCase() : 'p');
+        const captured = moveObj.captured || null;
+
+        // Queen Sacrifice (Queen given up or captured lower value)
+        if (piece === 'q') {
+            if (captured === null || captured === 'p' || captured === 'n' || captured === 'b' || captured === 'r') {
+                if (san.includes('+') || san.includes('#') || san.startsWith('Qx') || san.startsWith('Q')) {
+                    // Check if Queen moved into attacked/tactical territory or checkmate sac like Qb8+
+                    return true;
+                }
+            }
+        }
+
+        // Rook Sacrifice (Rook given for minor/pawn/nothing)
+        if (piece === 'r') {
+            if (captured === null || captured === 'p' || captured === 'n' || captured === 'b') {
+                if (san.startsWith('R') && (san.includes('+') || san.includes('x') || san.includes('#'))) {
+                    return true;
+                }
+            }
+        }
+
+        // Minor Piece Sacrifice (Knight or Bishop given for pawn or nothing)
+        if (piece === 'n' || piece === 'b') {
+            if (captured === null || captured === 'p') {
+                if (san.startsWith('N') || san.startsWith('B')) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+}
+
+if (typeof window !== 'undefined') {
+    window.StockfishEngine = StockfishEngine;
+}
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { StockfishEngine };
 }

@@ -454,7 +454,7 @@ class BoardRenderer {
                 // Render Floating On-Piece Quality Badge on Destination Square
                 if (this.lastMove && this.lastMove.to === sqName && onPieceQuality) {
                     const badgeEl = document.createElement('div');
-                    badgeEl.className = 'on-piece-badge';
+                    badgeEl.className = `on-piece-badge ${onPieceQuality.badgeClass || ''}`;
                     badgeEl.textContent = onPieceQuality.icon;
                     badgeEl.title = `${onPieceQuality.label}`;
                     sqEl.appendChild(badgeEl);

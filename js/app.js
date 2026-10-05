@@ -650,7 +650,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (lastMoveObj && currentMode === 'play') {
-                const classification = StockfishEngine.classifyMove(prevEvalScore, evalRes.score, !isWhiteTurn);
+                const classification = StockfishEngine.classifyMove(prevEvalScore, evalRes.score, !isWhiteTurn, lastMoveObj, moveHistory);
                 lastMoveObj.quality = classification;
                 renderMoveTable();
             }
@@ -669,7 +669,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const arrowColor = chess.turn() === 'w' ? '#10b981' : '#38bdf8';
                 boardRenderer.drawArrow(from, to, arrowColor, 14);
 
+                const currentPlayedMove = (analysisStep > 0 && analyzedGame && analyzedGame.moves && analyzedGame.moves[analysisStep - 1]) ? analyzedGame.moves[analysisStep - 1] : null;
+
+                let playedMoveHtml = '';
+                if (currentPlayedMove && currentPlayedMove.quality) {
+                    playedMoveHtml = `<div style="font-size: 0.78rem; margin-bottom: 3px;">Move ${analysisStep}: <strong>${currentPlayedMove.san}</strong> <span class="badge ${currentPlayedMove.quality.badgeClass}">${currentPlayedMove.quality.icon} ${currentPlayedMove.quality.label}</span></div>`;
+                }
+
                 recTextEl.innerHTML = `
+                    ${playedMoveHtml}
                     <span style="font-size: 0.725rem; color: var(--text-muted);">Stockfish Eval: <strong>${evalRes.score}</strong> (${turnName} to move)</span><br>
                     Best Move for ${turnName}: <strong style="color: ${arrowColor}; font-size: 0.95rem;">${from.toUpperCase()} ➔ ${to.toUpperCase()}</strong>
                 `;
@@ -1150,23 +1158,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const drop = Math.max(0, prevWinProb - currWinProb);
                 whiteWinProbLossSum += drop;
                 whiteCount++;
-
-                if (drop <= 0.02) moveObj.quality = { label: 'Best Move', badgeClass: 'badge-best', icon: '🌟' };
-                else if (drop <= 0.06) moveObj.quality = { label: 'Good Move', badgeClass: 'badge-good', icon: '👍' };
-                else if (drop <= 0.14) moveObj.quality = { label: 'Inaccuracy', badgeClass: 'badge-inaccuracy', icon: '⚠️' };
-                else if (drop <= 0.28) moveObj.quality = { label: 'Mistake', badgeClass: 'badge-mistake', icon: '❌' };
-                else moveObj.quality = { label: 'Blunder', badgeClass: 'badge-blunder', icon: '💥' };
             } else {
                 const drop = Math.max(0, (1 - prevWinProb) - (1 - currWinProb));
                 blackWinProbLossSum += drop;
                 blackCount++;
-
-                if (drop <= 0.02) moveObj.quality = { label: 'Best Move', badgeClass: 'badge-best', icon: '🌟' };
-                else if (drop <= 0.06) moveObj.quality = { label: 'Good Move', badgeClass: 'badge-good', icon: '👍' };
-                else if (drop <= 0.14) moveObj.quality = { label: 'Inaccuracy', badgeClass: 'badge-inaccuracy', icon: '⚠️' };
-                else if (drop <= 0.28) moveObj.quality = { label: 'Mistake', badgeClass: 'badge-mistake', icon: '❌' };
-                else moveObj.quality = { label: 'Blunder', badgeClass: 'badge-blunder', icon: '💥' };
             }
+
+            const movesSlice = gameObj.moves.slice(0, i);
+            const quality = StockfishEngine.classifyMove(prevScore, currScore, isWhiteMove, moveObj, movesSlice);
+            moveObj.quality = quality;
         }
 
         const avgWhiteLoss = whiteCount > 0 ? (whiteWinProbLossSum / whiteCount) : 0;
