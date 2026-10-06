@@ -650,8 +650,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (lastMoveObj && currentMode === 'play') {
-                const classification = StockfishEngine.classifyMove(prevEvalScore, evalRes.score, !isWhiteTurn, lastMoveObj, moveHistory);
+                const prevNum = StockfishEngine.parseScoreToNumeric(prevEvalScore);
+                const currNum = StockfishEngine.parseScoreToNumeric(evalRes.score);
+                const prevWinProbWhite = 1 / (1 + Math.pow(10, -prevNum / 4));
+                const currWinProbWhite = 1 / (1 + Math.pow(10, -currNum / 4));
+                const isWhite = !isWhiteTurn;
+                const drop = isWhite ? Math.max(0, prevWinProbWhite - currWinProbWhite) : Math.max(0, (1 - prevWinProbWhite) - (1 - currWinProbWhite));
+
+                const classification = StockfishEngine.classifyMove(prevEvalScore, evalRes.score, isWhite, lastMoveObj, moveHistory);
                 lastMoveObj.quality = classification;
+                lastMoveObj.accuracy = StockfishEngine.calculateMoveAccuracy(drop, classification);
                 renderMoveTable();
             }
             prevEvalScore = evalRes.score;
@@ -1139,41 +1147,39 @@ document.addEventListener('DOMContentLoaded', () => {
             return { white: "100.0", black: "100.0" };
         }
 
-        let whiteWinProbLossSum = 0;
-        let blackWinProbLossSum = 0;
-        let whiteCount = 0;
-        let blackCount = 0;
+        const whiteMoveAccuracies = [];
+        const blackMoveAccuracies = [];
 
         for (let i = 1; i < gameObj.evalScores.length && i - 1 < gameObj.moves.length; i++) {
             const prevScore = gameObj.evalScores[i - 1];
             const currScore = gameObj.evalScores[i];
             const moveObj = gameObj.moves[i - 1];
 
-            const prevWinProb = 1 / (1 + Math.pow(10, -prevScore / 4));
-            const currWinProb = 1 / (1 + Math.pow(10, -currScore / 4));
+            const prevNum = StockfishEngine.parseScoreToNumeric(prevScore);
+            const currNum = StockfishEngine.parseScoreToNumeric(currScore);
+
+            const prevWinProbWhite = 1 / (1 + Math.pow(10, -prevNum / 4));
+            const currWinProbWhite = 1 / (1 + Math.pow(10, -currNum / 4));
 
             const isWhiteMove = (i % 2 !== 0);
-
-            if (isWhiteMove) {
-                const drop = Math.max(0, prevWinProb - currWinProb);
-                whiteWinProbLossSum += drop;
-                whiteCount++;
-            } else {
-                const drop = Math.max(0, (1 - prevWinProb) - (1 - currWinProb));
-                blackWinProbLossSum += drop;
-                blackCount++;
-            }
+            const drop = isWhiteMove ? Math.max(0, prevWinProbWhite - currWinProbWhite) : Math.max(0, (1 - prevWinProbWhite) - (1 - currWinProbWhite));
 
             const movesSlice = gameObj.moves.slice(0, i);
             const quality = StockfishEngine.classifyMove(prevScore, currScore, isWhiteMove, moveObj, movesSlice);
             moveObj.quality = quality;
+
+            const moveAcc = StockfishEngine.calculateMoveAccuracy(drop, quality);
+            moveObj.accuracy = moveAcc;
+
+            if (isWhiteMove) {
+                whiteMoveAccuracies.push(moveAcc);
+            } else {
+                blackMoveAccuracies.push(moveAcc);
+            }
         }
 
-        const avgWhiteLoss = whiteCount > 0 ? (whiteWinProbLossSum / whiteCount) : 0;
-        const avgBlackLoss = blackCount > 0 ? (blackWinProbLossSum / blackCount) : 0;
-
-        const whiteAcc = Math.min(100, Math.max(30, (103.16 * Math.exp(-0.0435 * avgWhiteLoss * 100) - 3.16))).toFixed(1);
-        const blackAcc = Math.min(100, Math.max(30, (103.16 * Math.exp(-0.0435 * avgBlackLoss * 100) - 3.16))).toFixed(1);
+        const whiteAcc = StockfishEngine.calculatePlayerGameAccuracy(whiteMoveAccuracies);
+        const blackAcc = StockfishEngine.calculatePlayerGameAccuracy(blackMoveAccuracies);
 
         return { white: whiteAcc, black: blackAcc };
     }
@@ -2147,7 +2153,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const badge = document.createElement('span');
                     badge.className = `badge ${whiteMove.quality.badgeClass}`;
                     badge.textContent = `${whiteMove.quality.icon}`;
-                    badge.title = whiteMove.quality.label;
+                    const accInfo = (whiteMove.accuracy !== undefined) ? ` (${whiteMove.accuracy.toFixed(0)}% precision)` : '';
+                    badge.title = `${whiteMove.quality.label}${accInfo}`;
                     span.appendChild(badge);
                 }
 
@@ -2168,7 +2175,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const badge = document.createElement('span');
                     badge.className = `badge ${blackMove.quality.badgeClass}`;
                     badge.textContent = `${blackMove.quality.icon}`;
-                    badge.title = blackMove.quality.label;
+                    const accInfo = (blackMove.accuracy !== undefined) ? ` (${blackMove.accuracy.toFixed(0)}% precision)` : '';
+                    badge.title = `${blackMove.quality.label}${accInfo}`;
                     span.appendChild(badge);
                 }
 

@@ -200,6 +200,28 @@ class StockfishEngine {
         return { label: 'Blunder', badgeClass: 'badge-blunder', icon: '💥' };
     }
 
+    static calculateMoveAccuracy(drop, quality = null) {
+        if (quality && (quality.isTheory || quality.isBrilliant)) {
+            return 100.0;
+        }
+        if (drop <= 0.005) {
+            return 100.0;
+        }
+        const winLossPct = drop * 100;
+        const raw = 103.1668 * Math.exp(-0.04354 * winLossPct) - 3.1669;
+        return Math.min(100, Math.max(0, raw));
+    }
+
+    static calculatePlayerGameAccuracy(moveAccuracies) {
+        if (!moveAccuracies || moveAccuracies.length === 0) return "100.0";
+        const n = moveAccuracies.length;
+        const arithMean = moveAccuracies.reduce((a, b) => a + b, 0) / n;
+        const harmMean = n / moveAccuracies.reduce((acc, val) => acc + (1 / Math.max(1, val)), 0);
+        // Hybrid blending: 50% arithmetic mean (rewards consistent play) + 50% harmonic mean (properly punishes blunders)
+        const combined = 0.5 * arithMean + 0.5 * harmMean;
+        return Math.min(100, Math.max(0, combined)).toFixed(1);
+    }
+
     static detectPieceSacrifice(moveObj) {
         if (!moveObj) return false;
         const san = moveObj.san || '';
