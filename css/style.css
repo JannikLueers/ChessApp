@@ -1315,4 +1315,217 @@ main {
     color: #ffffff !important;
 }
 
+/* ==========================================================================
+   Practice Tab Styles
+   ========================================================================== */
 
+/* Category Pill Filters */
+.practice-category-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.65rem;
+}
+
+.practice-pill {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    border-radius: 20px;
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.22rem 0.65rem;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    white-space: nowrap;
+}
+
+.practice-pill:hover {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.4);
+    color: var(--text-primary);
+}
+
+.practice-pill.active {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.2));
+    border-color: var(--accent-emerald);
+    color: var(--accent-emerald);
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+}
+
+/* Scrollable Scenario Card List */
+.practice-scenario-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    max-height: 220px;
+    overflow-y: auto;
+    margin-bottom: 0.55rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.12) transparent;
+}
+
+.practice-scenario-list::-webkit-scrollbar { width: 5px; }
+.practice-scenario-list::-webkit-scrollbar-track { background: transparent; }
+.practice-scenario-list::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.15);
+    border-radius: 4px;
+}
+
+/* Individual Scenario Card */
+.practice-scenario-card {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.55rem;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.18s ease;
+    text-align: left;
+    width: 100%;
+}
+
+.practice-scenario-card:hover {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.35);
+    transform: translateX(2px);
+}
+
+.practice-scenario-card.active {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: var(--accent-emerald);
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+}
+
+.practice-scenario-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    width: 24px;
+    text-align: center;
+}
+
+.practice-scenario-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.practice-scenario-name {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.practice-scenario-goal-short {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Result badge on scenario card */
+.practice-result-badge {
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+
+/* Scenario Detail Name & Goal */
+.practice-detail-name {
+    font-size: 0.92rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 0.2rem;
+}
+
+.practice-detail-goal {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.2rem;
+    font-style: italic;
+}
+
+/* Learning Tip Box */
+.practice-tip-box {
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.6rem;
+    margin-top: 0.45rem;
+}
+
+.practice-tip-label {
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: var(--accent-amber);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.25rem;
+}
+
+.practice-tip-text {
+    font-size: 0.77rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+/* In-game info bar */
+.practice-ingame-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.35rem 0.5rem;
+    background: rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.45rem;
+}
+
+/* Result Banner */
+.practice-result-win {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.5);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.65rem;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #34d399;
+    margin-bottom: 0.45rem;
+    animation: result-pop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.practice-result-draw {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.65rem;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #fbbf24;
+    margin-bottom: 0.45rem;
+    animation: result-pop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.practice-result-loss {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.65rem;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #f87171;
+    margin-bottom: 0.45rem;
+    animation: result-pop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes result-pop {
+    0% { transform: scale(0.85); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}

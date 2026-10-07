@@ -27,6 +27,7 @@
             <button id="tab-play" class="tab-btn active">🎮 Play vs Computer</button>
             <button id="tab-analysis" class="tab-btn">🔍 Game Analysis</button>
             <button id="tab-puzzles" class="tab-btn">🧩 Puzzles</button>
+            <button id="tab-practice" class="tab-btn">🎓 Practice</button>
         </div>
     </header>
 
@@ -231,8 +232,97 @@
                 </div>
             </div>
 
+            <!-- Practice Mode Panel (Active in Practice Mode) -->
+            <div id="practice-controls-card" class="card" style="display: none;">
+                <div class="card-title">
+                    <span>🎓 Practice Mode</span>
+                    <span id="practice-scenario-count" style="font-size: 0.75rem; color: var(--text-muted);">25 Scenarios</span>
+                </div>
+
+                <!-- Category Pills -->
+                <div id="practice-category-pills" class="practice-category-pills">
+                    <button class="practice-pill active" data-category="endgames">♟ Endgames</button>
+                    <button class="practice-pill" data-category="openings">♗ Openings</button>
+                    <button class="practice-pill" data-category="middlegames">⚔️ Middlegames</button>
+                    <button class="practice-pill" data-category="pawns">🔲 Pawn Structures</button>
+                </div>
+
+                <!-- Scenario List (scrollable) -->
+                <div id="practice-scenario-list" class="practice-scenario-list">
+                    <!-- Scenario cards rendered by JS -->
+                </div>
+
+                <!-- Active Scenario Detail (hidden until a scenario is selected) -->
+                <div id="practice-detail-panel" style="display: none;">
+                    <div class="practice-detail-name" id="practice-detail-name"></div>
+                    <div class="practice-detail-goal" id="practice-detail-goal"></div>
+
+                    <div class="control-grid" style="margin-top: 0.5rem;">
+                        <div>
+                            <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 3px;">Play as</label>
+                            <select id="practice-select-side" class="select-field">
+                                <option value="w">White ♔</option>
+                                <option value="b">Black ♚</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 3px;">Bot Difficulty</label>
+                            <select id="practice-select-difficulty" class="select-field">
+                                <option value="1">Beginner (~800)</option>
+                                <option value="4" selected>Intermediate (~1400)</option>
+                                <option value="8">Advanced (~1800)</option>
+                                <option value="14">Grandmaster (2500+)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button id="btn-start-practice" class="btn btn-primary" style="width: 100%; margin-bottom: 0.5rem;">▶ Start Practice</button>
+
+                    <!-- Stockfish Hints Checkbox -->
+                    <label class="checkbox-field" style="margin-top: 0;">
+                        <input type="checkbox" id="chk-practice-hints">
+                        <span>💡 Show Stockfish Hint Arrow</span>
+                    </label>
+
+                    <!-- Learning Tip Box -->
+                    <div id="practice-tip-box" class="practice-tip-box" style="display: none;">
+                        <div class="practice-tip-label">💡 Tip</div>
+                        <div id="practice-tip-text" class="practice-tip-text"></div>
+                    </div>
+                </div>
+
+                <!-- In-game controls (visible during active practice session) -->
+                <div id="practice-ingame-controls" style="display: none;">
+                    <div class="practice-ingame-info">
+                        <span id="practice-ingame-name" style="font-weight: 700; font-size: 0.82rem;"></span>
+                        <span id="practice-ingame-side" style="font-size: 0.72rem; color: var(--text-muted);"></span>
+                    </div>
+
+                    <!-- Stockfish Hints Checkbox (in-game) -->
+                    <label class="checkbox-field" style="margin-bottom: 0.4rem;">
+                        <input type="checkbox" id="chk-practice-hints-ingame">
+                        <span>💡 Show Stockfish Hint Arrow</span>
+                    </label>
+
+                    <!-- Result Banner (shown after game ends) -->
+                    <div id="practice-result-banner" style="display: none;"></div>
+
+                    <!-- Tip box (in-game) -->
+                    <div id="practice-tip-box-ingame" class="practice-tip-box">
+                        <div class="practice-tip-label">💡 Tip</div>
+                        <div id="practice-tip-text-ingame" class="practice-tip-text"></div>
+                    </div>
+
+                    <div class="control-grid" style="margin-top: 0.5rem;">
+                        <button id="btn-practice-retry" class="btn">🔄 Retry</button>
+                        <button id="btn-practice-back" class="btn">← Back to list</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Move History Table & Badges -->
             <div id="move-history-card" class="card" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+
                 <div class="card-title">
                     <span>Move History</span>
                     <span id="move-count-text" style="font-size: 0.75rem; color: var(--text-muted);">0 Moves</span>
@@ -351,6 +441,7 @@
     <script src="js/pgnParser.js"></script>
     <script src="js/puzzles.js"></script>
     <script src="js/audio.js"></script>
+    <script src="js/practice.js"></script>
     <script src="js/app.js"></script>
 
 </body>

@@ -6,6 +6,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const botEngine = new StockfishEngine();
     const graphEngine = new StockfishEngine();
     const puzzleManager = new PuzzleManager();
+    const practiceManager = new PracticeManager();
+    const practiceEngine = new StockfishEngine();
+
 
     // DOM Elements
     const boardEl = document.getElementById('chessboard');
@@ -32,10 +35,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const tabPlay = document.getElementById('tab-play');
     const tabAnalysis = document.getElementById('tab-analysis');
     const tabPuzzles = document.getElementById('tab-puzzles');
+    const tabPractice = document.getElementById('tab-practice');
     const playControlsCard = document.getElementById('play-controls-card');
     const analysisControlsCard = document.getElementById('analysis-controls-card');
     const puzzlesControlsCard = document.getElementById('puzzles-controls-card');
+    const practiceControlsCard = document.getElementById('practice-controls-card');
     const moveHistoryCard = document.getElementById('move-history-card');
+
 
     // Controls DOM
     const selectDifficulty = document.getElementById('select-difficulty');
@@ -73,12 +79,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const puzzleDescription = document.getElementById('puzzle-description');
 
     // App State
-    let currentMode = 'play'; // 'play', 'analysis', or 'puzzles'
+    let currentMode = 'play'; // 'play', 'analysis', 'puzzles', or 'practice'
     let playerColor = 'w';
     let isFlipped = false;
     let selectedSquare = null;
     let moveHistory = [];
     let prevEvalScore = 0;
+    // Practice state
+    let practicePlayerColor = 'w';
+    let practiceIsActive = false;
+    let practiceCurrentCategory = 'endgames';
+
 
     // Default Historical Masterpiece for Analysis Tab Fallback
     const DEFAULT_MASTER_GAME = PgnGameParser.parsePGN(`[Event "Opera House Masterpiece"]
@@ -172,7 +183,9 @@ document.addEventListener('DOMContentLoaded', () => {
         playControlsCard.style.display = 'block';
         analysisControlsCard.style.display = 'none';
         puzzlesControlsCard.style.display = 'none';
+        practiceControlsCard.style.display = 'none';
         moveHistoryCard.style.display = 'flex';
+        practiceIsActive = false;
         initGame();
     });
 
@@ -183,7 +196,9 @@ document.addEventListener('DOMContentLoaded', () => {
         playControlsCard.style.display = 'none';
         analysisControlsCard.style.display = 'block';
         puzzlesControlsCard.style.display = 'none';
+        practiceControlsCard.style.display = 'none';
         moveHistoryCard.style.display = 'flex';
+        practiceIsActive = false;
 
         if (analyzedGame) {
             if (analyzedGame.evalScores && analyzedGame.evalScores.length > 0) {
@@ -210,14 +225,33 @@ document.addEventListener('DOMContentLoaded', () => {
         playControlsCard.style.display = 'none';
         analysisControlsCard.style.display = 'none';
         puzzlesControlsCard.style.display = 'block';
+        practiceControlsCard.style.display = 'none';
         moveHistoryCard.style.display = 'none';
+        practiceIsActive = false;
         loadNextPuzzle();
     });
 
+    tabPractice.addEventListener('click', () => {
+        currentMode = 'practice';
+        setActiveTab(tabPractice);
+        boardRenderer.clearHighlights();
+        boardRenderer.clearArrows();
+        playControlsCard.style.display = 'none';
+        analysisControlsCard.style.display = 'none';
+        puzzlesControlsCard.style.display = 'none';
+        practiceControlsCard.style.display = 'block';
+        moveHistoryCard.style.display = 'none';
+        practiceIsActive = false;
+        chess.reset();
+        updateUI();
+        renderPracticeScenarioList(practiceCurrentCategory);
+    });
+
     function setActiveTab(activeBtn) {
-        [tabPlay, tabAnalysis, tabPuzzles].forEach(btn => btn.classList.remove('active'));
+        [tabPlay, tabAnalysis, tabPuzzles, tabPractice].forEach(btn => btn.classList.remove('active'));
         activeBtn.classList.add('active');
     }
+
 
     // --- Play & Analysis Controls ---
     selectSide.addEventListener('change', (e) => {
@@ -337,7 +371,21 @@ document.addEventListener('DOMContentLoaded', () => {
             return false;
         }
 
+        if (currentMode === 'practice') {
+            if (!practiceIsActive || chess.game_over()) return false;
+            if (chess.turn() !== practicePlayerColor) return false;
+            const piece = chess.get(sqName);
+            if (piece && piece.color === practicePlayerColor) {
+                wasSelectedBeforePickup = (selectedSquare === sqName);
+                selectedSquare = sqName;
+                updateUI();
+                return true;
+            }
+            return false;
+        }
+
         if (chess.turn() !== playerColor) return false;
+
 
         const piece = chess.get(sqName);
         if (piece && piece.color === playerColor) {
@@ -370,7 +418,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (currentMode === 'practice') {
+            if (!practiceIsActive || chess.game_over()) return;
+            if (chess.turn() !== practicePlayerColor) return;
+            handlePracticeSquareClick(sqName);
+            return;
+        }
+
         if (chess.turn() !== playerColor) return;
+
 
         if (selectedSquare === sqName && wasSelectedBeforePickup) {
             selectedSquare = null;
@@ -466,7 +522,29 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (currentMode === 'practice') {
+            if (!practiceIsActive || chess.game_over()) return;
+            if (chess.turn() !== practicePlayerColor) { selectedSquare = null; updateUI(); return; }
+            if (!fromSq || !toSq || fromSq === toSq || !isLegalMove(fromSq, toSq)) {
+                selectedSquare = fromSq;
+                updateUI();
+                return;
+            }
+            const isPromo = checkIsPromotionMove(fromSq, toSq);
+            if (isPromo) {
+                promptPawnPromotion(fromSq, toSq, practicePlayerColor, (chosenPiece) => {
+                    executePracticeMove(fromSq, toSq, chosenPiece);
+                    selectedSquare = null;
+                });
+                return;
+            }
+            executePracticeMove(fromSq, toSq, 'q');
+            selectedSquare = null;
+            return;
+        }
+
         if (chess.turn() !== playerColor) {
+
             selectedSquare = null;
             updateUI();
             return;
@@ -2074,7 +2152,381 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+
+    // ==========================================================================
+    // PRACTICE MODE LOGIC
+    // ==========================================================================
+
+    // DOM refs for practice panel
+    const practiceScenarioList  = document.getElementById('practice-scenario-list');
+    const practiceDetailPanel   = document.getElementById('practice-detail-panel');
+    const practiceIngameControls = document.getElementById('practice-ingame-controls');
+    const practiceDetailName    = document.getElementById('practice-detail-name');
+    const practiceDetailGoal    = document.getElementById('practice-detail-goal');
+    const practiceSelectSide    = document.getElementById('practice-select-side');
+    const practiceSelectDiff    = document.getElementById('practice-select-difficulty');
+    const btnStartPractice      = document.getElementById('btn-start-practice');
+    const practiceHintsChk      = document.getElementById('chk-practice-hints');
+    const practiceHintsIngame   = document.getElementById('chk-practice-hints-ingame');
+    const practiceTipBox        = document.getElementById('practice-tip-box');
+    const practiceTipText       = document.getElementById('practice-tip-text');
+    const practiceTipBoxIngame  = document.getElementById('practice-tip-box-ingame');
+    const practiceTipTextIngame = document.getElementById('practice-tip-text-ingame');
+    const practiceIngameName    = document.getElementById('practice-ingame-name');
+    const practiceIngameSide    = document.getElementById('practice-ingame-side');
+    const practiceResultBanner  = document.getElementById('practice-result-banner');
+    const btnPracticeRetry      = document.getElementById('btn-practice-retry');
+    const btnPracticeBack       = document.getElementById('btn-practice-back');
+    const categoryPills         = document.querySelectorAll('.practice-pill');
+
+    // Category pill switching
+    categoryPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            categoryPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            practiceCurrentCategory = pill.dataset.category;
+            practiceDetailPanel.style.display = 'none';
+            practiceIngameControls.style.display = 'none';
+            practiceScenarioList.style.display = 'flex';
+            renderPracticeScenarioList(practiceCurrentCategory);
+        });
+    });
+
+    function renderPracticeScenarioList(category) {
+        practiceScenarioList.innerHTML = '';
+        const scenarios = practiceManager.getScenariosForCategory(category);
+
+        scenarios.forEach(s => {
+            const result = practiceManager.getResult(s.id);
+            let resultBadge = '';
+            if (result === 'win')  resultBadge = '<span class="practice-result-badge">🏆</span>';
+            else if (result === 'draw') resultBadge = '<span class="practice-result-badge">🤝</span>';
+            else if (result === 'loss') resultBadge = '<span class="practice-result-badge">❌</span>';
+
+            const card = document.createElement('button');
+            card.className = 'practice-scenario-card';
+            card.dataset.scenarioId = s.id;
+            card.innerHTML = `
+                <span class="practice-scenario-icon">${s.icon}</span>
+                <span class="practice-scenario-info">
+                    <span class="practice-scenario-name">${s.name}</span>
+                    <span class="practice-scenario-goal-short">${s.goal}</span>
+                </span>
+                ${resultBadge}
+            `;
+            card.addEventListener('click', () => selectPracticeScenario(s.id));
+            practiceScenarioList.appendChild(card);
+        });
+    }
+
+    function selectPracticeScenario(scenarioId) {
+        const s = practiceManager.setCurrentScenario(scenarioId);
+        if (!s) return;
+
+        // Highlight active card
+        practiceScenarioList.querySelectorAll('.practice-scenario-card').forEach(c => {
+            c.classList.toggle('active', c.dataset.scenarioId === scenarioId);
+        });
+
+        // Populate detail panel
+        practiceDetailName.textContent = `${s.icon} ${s.name}`;
+        practiceDetailGoal.textContent = `Goal: ${s.goal}`;
+
+        // Pre-select the recommended side for this scenario
+        practiceSelectSide.value = s.playAs;
+
+        // Show tip
+        practiceTipText.textContent = s.tip;
+        practiceTipBox.style.display = 'block';
+
+        // Show detail panel, hide ingame controls
+        practiceDetailPanel.style.display = 'block';
+        practiceIngameControls.style.display = 'none';
+        practiceResultBanner.style.display = 'none';
+
+        // Preview the position on the board (unplayable)
+        chess.load(s.fen);
+        practiceIsActive = false;
+        const previewSide = practiceSelectSide.value;
+        isFlipped = (previewSide === 'b');
+        boardRenderer.setFlipped(isFlipped);
+        boardRenderer.clearArrows();
+        boardRenderer.clearHighlights();
+        updateUI();
+    }
+
+    if (practiceSelectSide) {
+        practiceSelectSide.addEventListener('change', () => {
+            // Live-flip board preview when side changes
+            if (practiceManager.currentScenario && !practiceIsActive) {
+                isFlipped = (practiceSelectSide.value === 'b');
+                boardRenderer.setFlipped(isFlipped);
+                updateUI();
+            }
+        });
+    }
+
+    if (btnStartPractice) {
+        btnStartPractice.addEventListener('click', () => startPracticeSession());
+    }
+
+    function startPracticeSession() {
+        const s = practiceManager.currentScenario;
+        if (!s) return;
+
+        practicePlayerColor = practiceSelectSide.value;
+        practiceIsActive = true;
+        moveHistory = [];
+        prevEvalScore = 0;
+        selectedSquare = null;
+
+        chess.load(s.fen);
+        isFlipped = (practicePlayerColor === 'b');
+        boardRenderer.setFlipped(isFlipped);
+        boardRenderer.clearArrows();
+        boardRenderer.clearHighlights();
+
+        // Show in-game UI
+        practiceDetailPanel.style.display = 'none';
+        practiceIngameControls.style.display = 'block';
+        practiceResultBanner.style.display = 'none';
+        practiceIngameName.textContent = s.name;
+        const sideLabel = practicePlayerColor === 'w' ? 'Playing as White ♔' : 'Playing as Black ♚';
+        practiceIngameSide.textContent = sideLabel;
+
+        // Sync ingame hints checkbox with the pre-game one
+        practiceHintsIngame.checked = practiceHintsChk.checked;
+
+        // Tip in-game
+        practiceTipTextIngame.textContent = s.tip;
+
+        updateUI();
+        triggerEngineEvaluation();
+
+        // If the player chose a side where it's the bot's turn first, make bot move
+        if (chess.turn() !== practicePlayerColor) {
+            setTimeout(makePracticeBotMove, 500);
+        }
+    }
+
+    function executePracticeMove(from, to, promoPiece = 'q') {
+        const legalMoves = chess.moves({ square: from, verbose: true });
+        const targetMove = legalMoves.find(m => m.to === to);
+        if (!targetMove) return false;
+
+        const moveObj = chess.move({ from, to, promotion: promoPiece });
+        if (!moveObj) return false;
+
+        if (chess.in_check()) sounds.playCheck();
+        else if (moveObj.captured) sounds.playCapture();
+        else sounds.playMove();
+
+        moveHistory.push(moveObj);
+        updateUI();
+        triggerPracticeEvaluation();
+
+        if (chess.game_over()) {
+            showPracticeResult();
+            return true;
+        }
+
+        if (chess.turn() !== practicePlayerColor) {
+            setTimeout(makePracticeBotMove, 450);
+        }
+        return true;
+    }
+
+    function handlePracticeSquareClick(sqName) {
+        if (selectedSquare === sqName && wasSelectedBeforePickup) {
+            selectedSquare = null;
+            wasSelectedBeforePickup = false;
+            updateUI();
+            return;
+        }
+        if (selectedSquare === sqName && !wasSelectedBeforePickup) return;
+
+        if (selectedSquare) {
+            if (isLegalMove(selectedSquare, sqName)) {
+                const isPromo = checkIsPromotionMove(selectedSquare, sqName);
+                if (isPromo) {
+                    promptPawnPromotion(selectedSquare, sqName, practicePlayerColor, (chosenPiece) => {
+                        executePracticeMove(selectedSquare, sqName, chosenPiece);
+                        selectedSquare = null;
+                    });
+                    return;
+                }
+                executePracticeMove(selectedSquare, sqName, 'q');
+                selectedSquare = null;
+                return;
+            }
+        }
+
+        const piece = chess.get(sqName);
+        if (piece && piece.color === practicePlayerColor) {
+            selectedSquare = sqName;
+            updateUI();
+        } else {
+            selectedSquare = null;
+            updateUI();
+        }
+    }
+
+    function makePracticeBotMove() {
+        if (!practiceIsActive || chess.game_over() || chess.turn() === practicePlayerColor) return;
+
+        const diffLevel = parseInt(practiceSelectDiff.value, 10);
+        let depth = 4, skillLevel = 6, targetElo = 1400;
+
+        if (diffLevel === 1)       { depth = 1;  skillLevel = 0;  targetElo = 700;  }
+        else if (diffLevel === 4)  { depth = 4;  skillLevel = 6;  targetElo = 1400; }
+        else if (diffLevel === 8)  { depth = 8;  skillLevel = 12; targetElo = 1800; }
+        else                       { depth = 12; skillLevel = 20; targetElo = 2800; }
+
+        let botMoved = false;
+
+        const fallbackTimer = setTimeout(() => {
+            if (botMoved || chess.turn() === practicePlayerColor) return;
+            const lm = chess.moves({ verbose: true });
+            if (lm.length > 0) {
+                const c = lm[Math.floor(Math.random() * lm.length)];
+                doPracticeBotMove(c.from, c.to, c.promotion || 'q');
+                botMoved = true;
+            }
+        }, 900);
+
+        function doPracticeBotMove(from, to, promo) {
+            if (botMoved) return;
+            const moveObj = chess.move({ from, to, promotion: promo || 'q' });
+            if (!moveObj) return;
+            botMoved = true;
+            clearTimeout(fallbackTimer);
+
+            if (chess.in_check()) sounds.playCheck();
+            else if (moveObj.captured) sounds.playCapture();
+            else sounds.playMove();
+
+            moveHistory.push(moveObj);
+            updateUI();
+            triggerPracticeEvaluation();
+
+            if (chess.game_over()) {
+                showPracticeResult();
+            }
+        }
+
+        practiceEngine.setSkillLevel(skillLevel, targetElo);
+        practiceEngine.getBestMove(chess.fen(), depth, (bestMoveStr) => {
+            clearTimeout(fallbackTimer);
+            if (botMoved || chess.turn() === practicePlayerColor) return;
+            if (!bestMoveStr) return;
+
+            const from = bestMoveStr.substring(0, 2);
+            const to   = bestMoveStr.substring(2, 4);
+            const promo = bestMoveStr.substring(4, 5) || 'q';
+            doPracticeBotMove(from, to, promo);
+        });
+    }
+
+    function triggerPracticeEvaluation() {
+        if (currentMode !== 'practice') return;
+        evalEngine.evaluatePosition(chess.fen(), 12, (evalRes) => {
+            updateEvalBar(evalRes.score, evalRes.isMate);
+
+            // Show Stockfish hint arrow if checkbox is ticked
+            const hintsEnabled = practiceHintsIngame.checked;
+            boardRenderer.clearArrows();
+            if (hintsEnabled && evalRes.bestMove && chess.turn() === practicePlayerColor && !chess.game_over()) {
+                const from = evalRes.bestMove.substring(0, 2);
+                const to   = evalRes.bestMove.substring(2, 4);
+                boardRenderer.drawArrow(from, to, '#10b981', 10);
+            }
+        });
+    }
+
+    function showPracticeResult() {
+        if (!practiceManager.currentScenario) return;
+        practiceIsActive = false;
+        practiceResultBanner.style.display = 'block';
+        boardRenderer.clearArrows();
+
+        let resultClass, resultText, outcome;
+
+        if (chess.in_checkmate()) {
+            const loser = chess.turn(); // the side in checkmate lost
+            if (loser !== practicePlayerColor) {
+                // Player won
+                resultClass = 'practice-result-win';
+                resultText  = '🏆 Well done! You won!';
+                outcome     = 'win';
+            } else {
+                resultClass = 'practice-result-loss';
+                resultText  = '😞 You were checkmated. Study the tip and retry!';
+                outcome     = 'loss';
+            }
+        } else {
+            // Draw (stalemate, insufficient material, repetition, 50-move)
+            resultClass = 'practice-result-draw';
+            const s = practiceManager.currentScenario;
+            if (s.difficulty_note && s.difficulty_note.toLowerCase().includes('draw')) {
+                resultText = '🤝 Draw — that\'s the correct result! Well played.';
+                outcome = 'win'; // a draw is the goal
+            } else {
+                resultText = '🤝 Draw — close! The goal was a win. Try again!';
+                outcome = 'draw';
+            }
+        }
+
+        practiceManager.recordResult(practiceManager.currentScenario.id, outcome);
+        practiceResultBanner.className = resultClass;
+        practiceResultBanner.textContent = resultText;
+
+        // Refresh scenario list badges
+        renderPracticeScenarioList(practiceCurrentCategory);
+    }
+
+    if (btnPracticeRetry) {
+        btnPracticeRetry.addEventListener('click', () => {
+            if (!practiceManager.currentScenario) return;
+            startPracticeSession();
+        });
+    }
+
+    if (btnPracticeBack) {
+        btnPracticeBack.addEventListener('click', () => {
+            practiceIsActive = false;
+            practiceIngameControls.style.display = 'none';
+            practiceDetailPanel.style.display = 'none';
+            practiceScenarioList.style.display = 'flex';
+            boardRenderer.clearArrows();
+            boardRenderer.clearHighlights();
+            chess.reset();
+            updateUI();
+        });
+    }
+
+    // Sync the two hints checkboxes (pre-game ↔ in-game)
+    if (practiceHintsChk) {
+        practiceHintsChk.addEventListener('change', () => {
+            practiceHintsIngame.checked = practiceHintsChk.checked;
+        });
+    }
+    if (practiceHintsIngame) {
+        practiceHintsIngame.addEventListener('change', () => {
+            practiceHintsChk.checked = practiceHintsIngame.checked;
+            // Re-run evaluation to update the arrow immediately
+            if (practiceIsActive) triggerPracticeEvaluation();
+        });
+    }
+
+    // Initialize practice list on first visit
+    renderPracticeScenarioList('endgames');
+
+    // ==========================================================================
+    // END PRACTICE MODE LOGIC
+    // ==========================================================================
+
     // --- Render Board & UI State ---
+
     function updateUI() {
         let legalMoves = [];
         if (selectedSquare) {
