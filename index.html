@@ -193,41 +193,92 @@
             <div id="puzzles-controls-card" class="card" style="display: none;">
                 <div class="card-title">
                     <span>🧩 Puzzle Mode</span>
-                    <span id="puzzle-score-badge" style="font-size: 0.75rem; color: var(--accent-emerald); font-weight: 700;">Score: 0 / 0</span>
+                    <span id="puzzle-score-badge" style="font-size: 0.75rem; color: var(--accent-emerald); font-weight: 700;">Solved: 0 | Failed: 0</span>
                 </div>
 
-                <div class="control-grid">
-                    <div>
-                        <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 3px;">Category</label>
-                        <select id="select-puzzle-category" class="select-field">
-                            <option value="mixed" selected>Mixed Tactics</option>
-                            <option value="mate1">Checkmate in 1</option>
-                            <option value="mate2">Checkmate in 2</option>
-                            <option value="mate3">Checkmate in 3</option>
-                            <option value="material">Material Wins</option>
-                            <option value="endgame">Endgame Tactics</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 3px;">Difficulty</label>
-                        <select id="select-puzzle-rating" class="select-field">
-                            <option value="1200">Easy (~1000-1200)</option>
-                            <option value="1600" selected>Medium (~1600)</option>
-                            <option value="2000">Hard (~2000)</option>
-                            <option value="3000">Master (2400+)</option>
-                        </select>
-                    </div>
+                <!-- Theme Filter (Lichess Themes) -->
+                <div style="margin-bottom: 0.4rem;">
+                    <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 3px;">🏷️ Theme</label>
+                    <select id="select-puzzle-category" class="select-field">
+                        <option value="mixed" selected>🎲 Healthy Mix (All Themes)</option>
+                        <optgroup label="── Checkmates ──">
+                            <option value="mateIn1">Mate in 1</option>
+                            <option value="mateIn2">Mate in 2</option>
+                            <option value="mateIn3">Mate in 3</option>
+                            <option value="backRankMate">Back Rank Mate</option>
+                            <option value="smotheredMate">Smothered Mate</option>
+                            <option value="arabianMate">Arabian Mate</option>
+                            <option value="bodenMate">Boden's Mate</option>
+                            <option value="cornerMate">Corner Mate</option>
+                        </optgroup>
+                        <optgroup label="── Motifs ──">
+                            <option value="fork">Fork</option>
+                            <option value="pin">Pin</option>
+                            <option value="skewer">Skewer</option>
+                            <option value="discoveredAttack">Discovered Attack</option>
+                            <option value="discoveredCheck">Discovered Check</option>
+                            <option value="doubleCheck">Double Check</option>
+                            <option value="deflection">Deflection</option>
+                            <option value="attraction">Attraction</option>
+                            <option value="sacrifice">Sacrifice</option>
+                            <option value="hangingPiece">Hanging Piece</option>
+                            <option value="clearance">Clearance</option>
+                            <option value="intermezzo">Intermezzo</option>
+                            <option value="quietMove">Quiet Move</option>
+                            <option value="xRayAttack">X-Ray Attack</option>
+                            <option value="trappedPiece">Trapped Piece</option>
+                        </optgroup>
+                        <optgroup label="── Attacks ──">
+                            <option value="kingsideAttack">Kingside Attack</option>
+                            <option value="queensideAttack">Queenside Attack</option>
+                            <option value="exposedKing">Exposed King</option>
+                            <option value="advancedPawn">Advanced Pawn</option>
+                        </optgroup>
+                        <optgroup label="── Game Phase ──">
+                            <option value="opening">Opening</option>
+                            <option value="endgame">Endgame</option>
+                            <option value="pawnEndgame">Pawn Endgame</option>
+                            <option value="rookEndgame">Rook Endgame</option>
+                            <option value="knightEndgame">Knight Endgame</option>
+                            <option value="queenEndgame">Queen Endgame</option>
+                        </optgroup>
+                        <optgroup label="── Special Moves ──">
+                            <option value="promotion">Promotion</option>
+                            <option value="underPromotion">Underpromotion</option>
+                            <option value="enPassant">En Passant</option>
+                            <option value="zugzwang">Zugzwang</option>
+                            <option value="defensiveMove">Defensive Move</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <!-- Rating Range Filter -->
+                <div style="margin-bottom: 0.4rem;">
+                    <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 3px;">⭐ Rating Range</label>
+                    <select id="select-puzzle-rating" class="select-field">
+                        <option value="800_1100">Beginner (800–1100)</option>
+                        <option value="1100_1400" selected>Intermediate (1100–1400)</option>
+                        <option value="1400_1700">Advanced (1400–1700)</option>
+                        <option value="1700_2000">Expert (1700–2000)</option>
+                        <option value="2000_3000">Master (2000+)</option>
+                        <option value="0_3000">All Ratings</option>
+                    </select>
                 </div>
 
                 <div class="control-grid">
                     <button id="btn-next-puzzle" class="btn btn-primary">⏭ Next Puzzle</button>
                     <button id="btn-puzzle-hint" class="btn">💡 Get Hint</button>
                 </div>
-                <button id="btn-puzzle-history" class="btn" style="width: 100%; margin-top: 0.5rem;">📊 Solved & Failed Puzzles Progress</button>
+                <button id="btn-puzzle-history" class="btn" style="width: 100%; margin-top: 0.5rem;">📊 Puzzle Progress Overview</button>
 
                 <div id="puzzle-feedback" class="recommendation-box" style="background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3);">
+                    <!-- Lichess ID badge -->
+                    <div id="puzzle-lichess-badge" style="font-size: 0.65rem; color: var(--text-muted); margin-bottom: 3px; display: none;">
+                        🔗 Lichess ID: <a id="puzzle-lichess-id-link" href="#" target="_blank" style="font-family: monospace; color: var(--accent-emerald); text-decoration: none;"></a>
+                        &nbsp;·&nbsp; ⭐ <span id="puzzle-rating-display"></span>
+                    </div>
                     <div id="puzzle-description" class="recommendation-text" style="font-weight: 600;">
-                        Find the best tactical sequence for White!
+                        Select a theme and rating range, then click Next Puzzle!
                     </div>
                 </div>
             </div>
@@ -413,16 +464,16 @@
                 </div>
                 <div class="summary-chip chip-remaining">
                     <span class="chip-label">Unattempted</span>
-                    <span id="ph-unattempted-count" class="chip-val">30</span>
+                    <span id="ph-unattempted-count" class="chip-val">0</span>
                 </div>
             </div>
 
             <!-- Filter Navigation Sub-Tabs -->
             <div class="import-tab-nav" style="margin-bottom: 0.6rem;">
-                <button id="ph-filter-all" class="import-tab-btn active">All (30)</button>
+                <button id="ph-filter-all" class="import-tab-btn active">All</button>
                 <button id="ph-filter-solved" class="import-tab-btn">✅ Solved (0)</button>
                 <button id="ph-filter-failed" class="import-tab-btn">❌ Failed (0)</button>
-                <button id="ph-filter-unattempted" class="import-tab-btn">⚪ Unattempted (30)</button>
+                <button id="ph-filter-unattempted" class="import-tab-btn">⚪ Unattempted</button>
             </div>
 
             <!-- Puzzles List Container -->

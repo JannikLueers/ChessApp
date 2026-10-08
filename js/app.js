@@ -149,6 +149,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Puzzle & Promotion Lock State
     let isPuzzleLocked = false;
     let autoNextTimeout = null;
+    let puzzleBlunderTimeout = null;
+    let puzzleLastMove = null;
 
     // Board Renderer Initialization
     const boardRenderer = new BoardRenderer(boardEl, svgOverlayEl, {
@@ -179,7 +181,10 @@ document.addEventListener('DOMContentLoaded', () => {
     tabPlay.addEventListener('click', () => {
         currentMode = 'play';
         setActiveTab(tabPlay);
+        if (autoNextTimeout) { clearTimeout(autoNextTimeout); autoNextTimeout = null; }
+        if (puzzleBlunderTimeout) { clearTimeout(puzzleBlunderTimeout); puzzleBlunderTimeout = null; }
         boardRenderer.clearHighlights();
+        boardRenderer.clearArrows();
         playControlsCard.style.display = 'block';
         analysisControlsCard.style.display = 'none';
         puzzlesControlsCard.style.display = 'none';
@@ -192,7 +197,10 @@ document.addEventListener('DOMContentLoaded', () => {
     tabAnalysis.addEventListener('click', () => {
         currentMode = 'analysis';
         setActiveTab(tabAnalysis);
+        if (autoNextTimeout) { clearTimeout(autoNextTimeout); autoNextTimeout = null; }
+        if (puzzleBlunderTimeout) { clearTimeout(puzzleBlunderTimeout); puzzleBlunderTimeout = null; }
         boardRenderer.clearHighlights();
+        boardRenderer.clearArrows();
         playControlsCard.style.display = 'none';
         analysisControlsCard.style.display = 'block';
         puzzlesControlsCard.style.display = 'none';
@@ -221,7 +229,10 @@ document.addEventListener('DOMContentLoaded', () => {
     tabPuzzles.addEventListener('click', () => {
         currentMode = 'puzzles';
         setActiveTab(tabPuzzles);
+        if (autoNextTimeout) { clearTimeout(autoNextTimeout); autoNextTimeout = null; }
+        if (puzzleBlunderTimeout) { clearTimeout(puzzleBlunderTimeout); puzzleBlunderTimeout = null; }
         boardRenderer.clearHighlights();
+        boardRenderer.clearArrows();
         playControlsCard.style.display = 'none';
         analysisControlsCard.style.display = 'none';
         puzzlesControlsCard.style.display = 'block';
@@ -234,6 +245,8 @@ document.addEventListener('DOMContentLoaded', () => {
     tabPractice.addEventListener('click', () => {
         currentMode = 'practice';
         setActiveTab(tabPractice);
+        if (autoNextTimeout) { clearTimeout(autoNextTimeout); autoNextTimeout = null; }
+        if (puzzleBlunderTimeout) { clearTimeout(puzzleBlunderTimeout); puzzleBlunderTimeout = null; }
         boardRenderer.clearHighlights();
         boardRenderer.clearArrows();
         playControlsCard.style.display = 'none';
@@ -598,6 +611,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!fromSq || !toSq || fromSq === toSq || !isLegalMove(fromSq, toSq)) {
             selectedSquare = fromSq;
             updateUI();
+            return;
+        }
+
+        const isPromo = checkIsPromotionMove(fromSq, toSq);
+        if (isPromo) {
+            promptPawnPromotion(fromSq, toSq, chess.turn(), (chosenPiece) => {
+                attemptPuzzleMove(fromSq, toSq, chosenPiece);
+                selectedSquare = null;
+            });
             return;
         }
 
@@ -1846,43 +1868,130 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Puzzles Engine Mode ---
-    function loadNextPuzzle() {
-        const cat = selectPuzzleCategory.value;
-        const rat = parseInt(selectPuzzleRating.value, 10);
 
-        const p = puzzleManager.getRandomPuzzle(cat, rat);
+    /** Parse rating range value from select (e.g. "1100_1400" → {min, max}) */
+    function parsePuzzleRating() {
+        const val = selectPuzzleRating.value;
+        const parts = val.split('_');
+        return {
+            min: parseInt(parts[0], 10) || 0,
+            max: parseInt(parts[1], 10) || 3000
+        };
+    }
+
+    function loadNextPuzzle() {
+        const theme = selectPuzzleCategory.value;
+        const { min, max } = parsePuzzleRating();
+        const p = puzzleManager.getRandomPuzzle(theme, max, min);
         displayPuzzle(p);
     }
 
     function loadNextPuzzleInSequence() {
-        const cat = selectPuzzleCategory.value;
-        const rat = parseInt(selectPuzzleRating.value, 10);
-
-        const p = puzzleManager.getNextPuzzleInSequence(cat, rat);
+        const theme = selectPuzzleCategory.value;
+        const { min, max } = parsePuzzleRating();
+        const p = puzzleManager.getNextPuzzleInSequence(theme, max, min);
         displayPuzzle(p);
     }
 
+    // DOM refs for Lichess badge (may be null in older HTML)
+    const puzzleLichessBadge    = document.getElementById('puzzle-lichess-badge');
+    const puzzleLichessIdLink   = document.getElementById('puzzle-lichess-id-link');
+    const puzzleRatingDisplay   = document.getElementById('puzzle-rating-display');
+
     function displayPuzzle(p) {
+        if (autoNextTimeout) {
+            clearTimeout(autoNextTimeout);
+            autoNextTimeout = null;
+        }
+        if (puzzleBlunderTimeout) {
+            clearTimeout(puzzleBlunderTimeout);
+            puzzleBlunderTimeout = null;
+        }
+
+        puzzleLastMove = null;
         chess.load(p.fen);
         selectedSquare = null;
-        isPuzzleLocked = false;
-        if (autoNextTimeout) clearTimeout(autoNextTimeout);
+        isPuzzleLocked = true; // Locked while opponent blunder plays
 
-        isFlipped = (chess.turn() === 'b');
+        // In Lichess format, active turn in FEN is the OPPONENT who makes moves[0] (the blunder).
+        // Therefore, the solver is the OPPOSITE color.
+        const opponentColor = chess.turn();
+        const solverColor = (opponentColor === 'w') ? 'b' : 'w';
+
+        // Board is oriented from the solver's perspective
+        isFlipped = (solverColor === 'b');
         boardRenderer.setFlipped(isFlipped);
         boardRenderer.clearHighlights();
+        boardRenderer.clearArrows();
 
-        puzzleDescription.innerHTML = `<strong>${p.title}</strong>: ${p.description}`;
-        puzzleDescription.style.color = "var(--text-primary)";
+        // Show Lichess ID badge if available
+        if (puzzleLichessBadge) {
+            if (p.lichessId) {
+                puzzleLichessBadge.style.display = 'block';
+                if (puzzleLichessIdLink) {
+                    puzzleLichessIdLink.textContent = p.lichessId;
+                    puzzleLichessIdLink.href = `https://lichess.org/training/${p.lichessId}`;
+                }
+                if (puzzleRatingDisplay) {
+                    const label = PuzzleManager.getRatingLabel ? PuzzleManager.getRatingLabel(p.rating) : '';
+                    puzzleRatingDisplay.textContent = `${p.rating}${label ? ' · ' + label : ''}`;
+                }
+            } else {
+                puzzleLichessBadge.style.display = 'none';
+            }
+        }
+
+        // Build theme tags display
+        const themePills = p.themes
+            ? p.themes.map(t => `<span style="display:inline-block;background:rgba(99,102,241,0.15);color:#a5b4fc;border-radius:3px;padding:1px 5px;font-size:0.65rem;margin:1px;">${(typeof THEME_LABELS !== 'undefined' && THEME_LABELS[t]) ? THEME_LABELS[t] : t}</span>`).join(' ')
+            : '';
+
         puzzleScoreBadge.textContent = `Solved: ${puzzleManager.score.solved} | Failed: ${puzzleManager.score.failed}`;
 
+        // Initial preview: opponent is making their move
+        const opponentLabel = (opponentColor === 'w') ? 'White' : 'Black';
+        puzzleDescription.innerHTML = `<em>${opponentLabel} is making their move...</em>${themePills ? '<br><span style="margin-top:3px;display:inline-block;">' + themePills + '</span>' : ''}`;
+        puzzleDescription.style.color = "var(--text-muted)";
         updateUI();
+
+        // Auto-play the opponent's blunder (moves[0])
+        puzzleBlunderTimeout = setTimeout(() => {
+            const blunder = p.moves[0];
+            if (!blunder) {
+                isPuzzleLocked = false;
+                return;
+            }
+
+            const bFrom = blunder.substring(0, 2);
+            const bTo = blunder.substring(2, 4);
+            const bPromo = blunder.substring(4, 5) || 'q';
+
+            const blunderMoveObj = chess.move({ from: bFrom, to: bTo, promotion: bPromo });
+            puzzleLastMove = { from: bFrom, to: bTo };
+
+            if (chess.in_check()) sounds.playCheck();
+            else if (blunderMoveObj && blunderMoveObj.captured) sounds.playCapture();
+            else sounds.playMove();
+
+            // Highlight the opponent blunder with a red arrow
+            boardRenderer.clearArrows();
+            boardRenderer.drawArrow(bFrom, bTo, '#ef4444', 10);
+
+            // Turn is now the solver's turn
+            puzzleManager.moveIndex = 1;
+            isPuzzleLocked = false;
+
+            const solverLabel = (solverColor === 'w') ? '♔ White to move' : '♚ Black to move';
+            puzzleDescription.innerHTML = `<strong>${solverLabel}</strong>: ${p.description}${themePills ? '<br><span style="margin-top:3px;display:inline-block;">' + themePills + '</span>' : ''}`;
+            puzzleDescription.style.color = "var(--text-primary)";
+
+            updateUI();
+        }, 350);
     }
 
     function retryCurrentPuzzle() {
         if (!puzzleManager.currentPuzzle) return;
-        const p = puzzleManager.resetCurrentPuzzle();
-        displayPuzzle(p);
+        displayPuzzle(puzzleManager.currentPuzzle);
     }
 
     selectPuzzleCategory.addEventListener('change', loadNextPuzzle);
@@ -1989,13 +2098,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const categoryNames = {
-            'mate1': 'Checkmate in 1',
-            'mate2': 'Checkmate in 2',
-            'mate3': 'Checkmate in 3',
-            'material': 'Material Wins',
-            'endgame': 'Endgame Tactics'
-        };
+        // Use THEME_LABELS from puzzles.js or fall back gracefully
+        const themeLabel = (t) => (typeof THEME_LABELS !== 'undefined' && THEME_LABELS[t]) ? THEME_LABELS[t] : t;
 
         displayPuzzles.forEach(p => {
             const st = puzzleManager.getPuzzleStatus(p.id);
@@ -2010,17 +2114,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 borderClass = 'puzzle-card-failed';
             }
 
+            // Primary theme (first non-trivial)
+            const primaryThemes = p.themes ? p.themes.filter(t => !['short','long','oneMove','veryLong','crushing','advantage'].includes(t)) : [];
+            const primaryTheme = primaryThemes.length ? themeLabel(primaryThemes[0]) : (p.themes ? themeLabel(p.themes[0]) : '—');
+
+            // Lichess ID link
+            const lichessLink = p.lichessId
+                ? `<a href="https://lichess.org/training/${p.lichessId}" target="_blank" style="font-family:monospace;font-size:0.65rem;color:var(--accent-emerald);text-decoration:none;opacity:0.8;" title="View on Lichess">${p.lichessId}</a>`
+                : '';
+
             const card = document.createElement('div');
             card.className = `chesscom-game-card ${borderClass}`;
             card.innerHTML = `
                 <div class="chesscom-game-main" style="flex: 1; margin-right: 0.5rem;">
                     <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 2px;">
                         ${statusBadge}
-                        <span style="font-weight: 700; font-size: 0.82rem; color: var(--text-primary);">${p.title}</span>
+                        <span style="font-weight: 700; font-size: 0.82rem; color: var(--text-primary);">🏷️ ${primaryTheme}</span>
+                        ${lichessLink}
                     </div>
                     <div class="chesscom-game-meta">
-                        <span>🏷️ ${categoryNames[p.category] || p.category}</span>
-                        <span>⭐ Rating: ${p.rating}</span>
+                        <span style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${p.description}">${p.description}</span>
+                        <span>⭐ ${p.rating}</span>
                     </div>
                 </div>
                 <button class="btn btn-primary btn-sm btn-play-puzzle-direct" style="padding: 0.25rem 0.6rem; font-size: 0.72rem; white-space: nowrap;">
@@ -2032,7 +2146,6 @@ document.addEventListener('DOMContentLoaded', () => {
             btnPlay.addEventListener('click', () => {
                 puzzleManager.currentPuzzle = p;
                 puzzleManager.currentIndex = puzzleManager.puzzles.findIndex(item => item.id === p.id);
-                puzzleManager.moveIndex = 0;
                 displayPuzzle(p);
                 puzzleHistoryModal.classList.remove('active');
             });
@@ -2053,6 +2166,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     function handlePuzzleSquareClick(sqName) {
+        if (isPuzzleLocked) return;
         if (selectedSquare === sqName && wasSelectedBeforePickup) {
             selectedSquare = null;
             wasSelectedBeforePickup = false;
@@ -2064,29 +2178,46 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (selectedSquare) {
-            attemptPuzzleMove(selectedSquare, sqName);
-            selectedSquare = null;
-            return;
+            if (isLegalMove(selectedSquare, sqName)) {
+                const isPromo = checkIsPromotionMove(selectedSquare, sqName);
+                if (isPromo) {
+                    promptPawnPromotion(selectedSquare, sqName, chess.turn(), (chosenPiece) => {
+                        attemptPuzzleMove(selectedSquare, sqName, chosenPiece);
+                        selectedSquare = null;
+                    });
+                    return;
+                }
+                attemptPuzzleMove(selectedSquare, sqName);
+                selectedSquare = null;
+                return;
+            }
         }
 
         const piece = chess.get(sqName);
         if (piece && piece.color === chess.turn()) {
             selectedSquare = sqName;
             updateUI();
+        } else {
+            selectedSquare = null;
+            updateUI();
         }
     }
 
-    function attemptPuzzleMove(from, to) {
+    function attemptPuzzleMove(from, to, chosenPromo = 'q') {
+        if (isPuzzleLocked) return;
         const legalMoves = chess.moves({ square: from, verbose: true });
         const targetMove = legalMoves.find(m => m.to === to);
         if (!targetMove) return;
 
         const moveSan = targetMove.san;
-        const promo = targetMove.promotion || 'q';
+        const promo = targetMove.promotion || chosenPromo || 'q';
         const res = puzzleManager.verifyUserMove(from, to, moveSan, promo);
 
         if (res.valid) {
+            boardRenderer.clearArrows();
+            boardRenderer.clearHighlights();
             const playedMoveObj = chess.move({ from, to, promotion: promo });
+            puzzleLastMove = { from, to };
             if (chess.in_check()) sounds.playCheck();
             else if (playedMoveObj && playedMoveObj.captured) sounds.playCapture();
             else sounds.playMove();
@@ -2094,31 +2225,43 @@ document.addEventListener('DOMContentLoaded', () => {
             updateUI();
 
             if (res.completed) {
-                sounds.playCheck();
-                puzzleDescription.innerHTML = `<span style="color: var(--accent-emerald); font-weight: 800;">🎉 EXCELLENT! Puzzle Solved! Loading next puzzle...</span>`;
+                isPuzzleLocked = true;
+                if (chess.in_checkmate()) {
+                    sounds.playCheck();
+                    puzzleDescription.innerHTML = `<span style="color: var(--accent-emerald); font-weight: 800;">🎉 CHECKMATE! Puzzle Solved! Loading next puzzle...</span>`;
+                } else {
+                    puzzleDescription.innerHTML = `<span style="color: var(--accent-emerald); font-weight: 800;">🎉 TACTICAL WIN! Decisive Advantage Secured! Puzzle Solved! Loading next puzzle...</span>`;
+                }
                 puzzleScoreBadge.textContent = `Solved: ${puzzleManager.score.solved} | Failed: ${puzzleManager.score.failed}`;
                 
                 autoNextTimeout = setTimeout(() => {
                     loadNextPuzzleInSequence();
-                }, 1500);
+                }, 1700);
 
             } else if (res.replyMove) {
+                isPuzzleLocked = true;
                 setTimeout(() => {
                     const rFrom = res.replyMove.substring(0, 2);
                     const rTo = res.replyMove.substring(2, 4);
                     const rPromo = res.replyMove.substring(4, 5) || 'q';
 
                     const replyMoveObj = chess.move({ from: rFrom, to: rTo, promotion: rPromo });
+                    puzzleLastMove = { from: rFrom, to: rTo };
                     if (chess.in_check()) sounds.playCheck();
                     else if (replyMoveObj && replyMoveObj.captured) sounds.playCapture();
                     else sounds.playMove();
 
+                    // Highlight opponent's reply with blue arrow
+                    boardRenderer.clearArrows();
+                    boardRenderer.drawArrow(rFrom, rTo, '#3b82f6', 8);
+                    isPuzzleLocked = false;
                     updateUI();
                 }, 400);
             }
         } else {
             isPuzzleLocked = true;
-            const playedMoveObj = chess.move({ from, to, promotion: 'q' });
+            const playedMoveObj = chess.move({ from, to, promotion: promo });
+            puzzleLastMove = { from, to };
             sounds.playBlunder();
             updateUI();
 
@@ -2143,8 +2286,18 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button id="btn-retry-puzzle" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">🔄 Try Again</button>
                         `;
 
-                        document.getElementById('btn-retry-puzzle').addEventListener('click', retryCurrentPuzzle);
+                        const btnRetry = document.getElementById('btn-retry-puzzle');
+                        if (btnRetry) btnRetry.addEventListener('click', retryCurrentPuzzle);
                     }, 350);
+                } else {
+                    puzzleDescription.innerHTML = `
+                        <div style="color: var(--accent-rose); font-weight: 700; margin-bottom: 6px;">
+                            ❌ Incorrect Move! That's not the best tactical line.
+                        </div>
+                        <button id="btn-retry-puzzle" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">🔄 Try Again</button>
+                    `;
+                    const btnRetry = document.getElementById('btn-retry-puzzle');
+                    if (btnRetry) btnRetry.addEventListener('click', retryCurrentPuzzle);
                 }
             });
 
@@ -2549,7 +2702,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        const lastMove = moveHistory[moveHistory.length - 1] || null;
+        let lastMove = moveHistory[moveHistory.length - 1] || null;
+        if (currentMode === 'puzzles' && puzzleLastMove) {
+            lastMove = puzzleLastMove;
+        }
 
         boardRenderer.renderBoard(chess, {
             selectedSquare: selectedSquare,
