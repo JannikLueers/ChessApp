@@ -76,7 +76,9 @@ class BoardRenderer {
                 // Event Listeners
                 sqEl.addEventListener('click', (e) => {
                     if (!e.target.closest('.piece-container')) {
-                        this.handleSquareClick(sqName);
+                        if (this.onSquareClick) {
+                            this.onSquareClick(sqName);
+                        }
                     }
                 });
 
@@ -86,23 +88,41 @@ class BoardRenderer {
         this.updateMarkedSquareDOM();
     }
 
+    getSquareFromPoint(clientX, clientY) {
+        if (clientX === undefined || clientY === undefined) return null;
+        const el = document.elementFromPoint(clientX, clientY);
+        if (el) {
+            const sqEl = el.closest('.square');
+            if (sqEl && sqEl.dataset && sqEl.dataset.square) {
+                return sqEl.dataset.square;
+            }
+        }
+        // Coordinate geometry fallback if DOM elementFromPoint hits an overlay or edge
+        if (this.boardEl) {
+            const rect = this.boardEl.getBoundingClientRect();
+            if (clientX >= rect.left && clientX < rect.right && clientY >= rect.top && clientY < rect.bottom) {
+                const fIdx = Math.floor((clientX - rect.left) / (rect.width / 8));
+                const rIdx = Math.floor((clientY - rect.top) / (rect.height / 8));
+                const currentFiles = this.flipped ? ['h','g','f','e','d','c','b','a'] : ['a','b','c','d','e','f','g','h'];
+                const currentRanks = this.flipped ? ['1','2','3','4','5','6','7','8'] : ['8','7','6','5','4','3','2','1'];
+                if (fIdx >= 0 && fIdx < 8 && rIdx >= 0 && rIdx < 8) {
+                    return currentFiles[fIdx] + currentRanks[rIdx];
+                }
+            }
+        }
+        return null;
+    }
+
     setupRightClickHandlers() {
         this.boardEl.addEventListener('contextmenu', (e) => e.preventDefault());
         if (this.svgOverlay) {
             this.svgOverlay.addEventListener('contextmenu', (e) => e.preventDefault());
         }
 
-        const getSquareFromPoint = (clientX, clientY) => {
-            const el = document.elementFromPoint(clientX, clientY);
-            if (!el) return null;
-            const sqEl = el.closest('.square');
-            return sqEl ? sqEl.dataset.square : null;
-        };
-
         this.boardEl.addEventListener('mousedown', (e) => {
             if (e.button === 2) { // Right Click
                 e.preventDefault();
-                const sq = getSquareFromPoint(e.clientX, e.clientY);
+                const sq = this.getSquareFromPoint(e.clientX, e.clientY);
                 if (sq) {
                     this.rightClickStartSq = sq;
                     this.isRightClickDragging = false;
@@ -114,7 +134,7 @@ class BoardRenderer {
 
         window.addEventListener('mousemove', (e) => {
             if (this.rightClickStartSq) {
-                const currentSq = getSquareFromPoint(e.clientX, e.clientY);
+                const currentSq = this.getSquareFromPoint(e.clientX, e.clientY);
                 if (currentSq && currentSq !== this.rightClickStartSq) {
                     this.isRightClickDragging = true;
                     this.previewArrow = { fromSq: this.rightClickStartSq, toSq: currentSq, color: 'rgba(245, 158, 11, 0.65)' };
@@ -126,7 +146,7 @@ class BoardRenderer {
         window.addEventListener('mouseup', (e) => {
             if (e.button === 2 && this.rightClickStartSq) {
                 e.preventDefault();
-                const endSq = getSquareFromPoint(e.clientX, e.clientY);
+                const endSq = this.getSquareFromPoint(e.clientX, e.clientY);
                 
                 this.previewArrow = null;
 
@@ -217,6 +237,9 @@ class BoardRenderer {
         if (this.onPiecePickup) {
             const allowed = this.onPiecePickup(sqName);
             if (allowed === false) {
+                if (this.onSquareClick) {
+                    this.onSquareClick(sqName);
+                }
                 return;
             }
         }
@@ -300,9 +323,7 @@ class BoardRenderer {
         if (!fromSq) return;
 
         if (this.pointerDragMovedFar) {
-            const targetEl = document.elementFromPoint(clientX, clientY);
-            const sqEl = targetEl ? targetEl.closest('.square') : null;
-            const toSq = sqEl ? sqEl.dataset.square : null;
+            const toSq = this.getSquareFromPoint(clientX, clientY);
 
             if (this.onPieceDrop) {
                 this.onPieceDrop(fromSq, toSq);
