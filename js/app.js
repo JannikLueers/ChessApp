@@ -15,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const svgOverlayEl = document.getElementById('board-svg-overlay');
     const evalBarWhite = document.getElementById('eval-bar-white');
     const evalBarBlack = document.getElementById('eval-bar-black');
+    const evalBarContainer = document.querySelector('.eval-bar-container');
     const evalTextEl = document.getElementById('eval-text');
     const moveTableBody = document.getElementById('move-table-body');
     const moveCountText = document.getElementById('move-count-text');
@@ -85,6 +86,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedSquare = null;
     let moveHistory = [];
     let prevEvalScore = 0;
+    let latestEvalScore = "0.0";
+    let latestEvalIsMate = false;
     // Practice state
     let practicePlayerColor = 'w';
     let practiceIsActive = false;
@@ -168,12 +171,15 @@ document.addEventListener('DOMContentLoaded', () => {
         chess.reset();
         moveHistory = [];
         prevEvalScore = 0;
+        latestEvalScore = "0.0";
+        latestEvalIsMate = false;
         gameEvalScores = [0];
         selectedSquare = null;
         isPuzzleLocked = false;
         if (autoNextTimeout) clearTimeout(autoNextTimeout);
         boardRenderer.clearHighlights();
         updateUI();
+        updateEvalBar("0.0", false);
         triggerEngineEvaluation();
     }
 
@@ -191,6 +197,10 @@ document.addEventListener('DOMContentLoaded', () => {
         practiceControlsCard.style.display = 'none';
         moveHistoryCard.style.display = 'flex';
         practiceIsActive = false;
+        if (selectSide) {
+            playerColor = selectSide.value;
+            setBoardOrientation(playerColor === 'b');
+        }
         initGame();
     });
 
@@ -266,11 +276,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
+    // --- Board Orientation & Flipped Eval Synchronization ---
+    function setBoardOrientation(flipped) {
+        isFlipped = !!flipped;
+        boardRenderer.setFlipped(isFlipped);
+        if (evalBarContainer) {
+            evalBarContainer.classList.toggle('flipped', isFlipped);
+        }
+        updateEvalBar();
+    }
+
     // --- Play & Analysis Controls ---
     selectSide.addEventListener('change', (e) => {
         playerColor = e.target.value;
-        isFlipped = (playerColor === 'b');
-        boardRenderer.setFlipped(isFlipped);
+        setBoardOrientation(playerColor === 'b');
         initGame();
         if (playerColor === 'b') {
             makeAIMove();
@@ -295,15 +314,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     btnFlip.addEventListener('click', () => {
-        isFlipped = !isFlipped;
-        boardRenderer.setFlipped(isFlipped);
+        setBoardOrientation(!isFlipped);
         updateUI();
     });
 
     if (btnFlipAnalysis) {
         btnFlipAnalysis.addEventListener('click', () => {
-            isFlipped = !isFlipped;
-            boardRenderer.setFlipped(isFlipped);
+            setBoardOrientation(!isFlipped);
             updateUI();
             if (currentMode === 'analysis' && analyzedGame) {
                 drawEvalGraph();
@@ -798,18 +815,74 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateEvalBar(scoreStr, isMate) {
-        evalTextEl.textContent = scoreStr;
+        if (scoreStr !== undefined && scoreStr !== null) {
+            latestEvalScore = String(scoreStr);
+            latestEvalIsMate = (isMate !== undefined && isMate !== null)
+                ? !!isMate
+                : latestEvalScore.startsWith('#');
+        } else {
+            scoreStr = latestEvalScore;
+            isMate = latestEvalIsMate;
+        }
+
+        const mate = isMate || (typeof scoreStr === 'string' && scoreStr.startsWith('#'));
+
+        if (evalBarContainer) {
+            evalBarContainer.classList.toggle('flipped', isFlipped);
+        }
+
         let numScore = parseFloat(scoreStr) || 0;
-        if (isMate) {
+        if (mate) {
             numScore = scoreStr.includes('-') ? -10 : 10;
         }
 
-        let effectiveScore = isFlipped ? -numScore : numScore;
-        const winProb = 1 / (1 + Math.pow(10, -effectiveScore / 4));
-        const whitePct = Math.min(Math.max(winProb * 100, 5), 95);
+        // Perspective score relative to the player at the bottom (user perspective):
+        // When playing White (!isFlipped), White is at the bottom (+ = White ahead).
+        // When playing Black (isFlipped), Black is at the bottom (+ = Black ahead).
+        const perspectiveScore = isFlipped ? -numScore : numScore;
+
+        // Format display text according to current board perspective:
+        let displayScoreText = "0.0";
+        if (mate) {
+            const rawMateNum = parseInt(scoreStr.replace(/[^0-9-]/g, ''), 10) || 0;
+            const perspectiveMate = isFlipped ? -rawMateNum : rawMateNum;
+            displayScoreText = perspectiveMate > 0 ? `#${perspectiveMate}` : `#-` + Math.abs(perspectiveMate);
+        } else {
+            if (perspectiveScore === 0) {
+                displayScoreText = "0.0";
+            } else {
+                const absVal = Math.abs(perspectiveScore).toFixed(1);
+                displayScoreText = perspectiveScore > 0 ? `+${absVal}` : `-${absVal}`;
+            }
+        }
+
+        if (evalTextEl) {
+            evalTextEl.textContent = displayScoreText;
+
+            // Positioning & theme of the evaluation badge:
+            // Advantage side has larger segment space.
+            // When perspectiveScore >= 0, bottom player (user) holds equality/advantage.
+            // When perspectiveScore < 0, top player (opponent) holds advantage.
+            evalTextEl.classList.remove('pos-top', 'pos-bottom', 'theme-light', 'theme-dark');
+            const isBottomWinning = (perspectiveScore >= 0);
+            if (isBottomWinning) {
+                evalTextEl.classList.add('pos-bottom');
+                evalTextEl.classList.add(isFlipped ? 'theme-dark' : 'theme-light');
+            } else {
+                evalTextEl.classList.add('pos-top');
+                evalTextEl.classList.add(isFlipped ? 'theme-light' : 'theme-dark');
+            }
+        }
+
+        // Calculate heights:
+        // Absolute White winning probability:
+        const winProbWhite = 1 / (1 + Math.pow(10, -numScore / 4));
+        const whitePct = Math.min(Math.max(winProbWhite * 100, 5), 95);
         const blackPct = 100 - whitePct;
 
-        evalBarBlack.style.height = `${blackPct}%`;
+        if (evalBarBlack) {
+            evalBarBlack.style.height = `${blackPct}%`;
+        }
     }
 
     // --- Interactive Evaluation Line Graph Drawing ---
@@ -1919,8 +1992,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const solverColor = (opponentColor === 'w') ? 'b' : 'w';
 
         // Board is oriented from the solver's perspective
-        isFlipped = (solverColor === 'b');
-        boardRenderer.setFlipped(isFlipped);
+        setBoardOrientation(solverColor === 'b');
         boardRenderer.clearHighlights();
         boardRenderer.clearArrows();
 
@@ -2401,8 +2473,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chess.load(s.fen);
         practiceIsActive = false;
         const previewSide = practiceSelectSide.value;
-        isFlipped = (previewSide === 'b');
-        boardRenderer.setFlipped(isFlipped);
+        setBoardOrientation(previewSide === 'b');
         boardRenderer.clearArrows();
         boardRenderer.clearHighlights();
         updateUI();
@@ -2412,8 +2483,7 @@ document.addEventListener('DOMContentLoaded', () => {
         practiceSelectSide.addEventListener('change', () => {
             // Live-flip board preview when side changes
             if (practiceManager.currentScenario && !practiceIsActive) {
-                isFlipped = (practiceSelectSide.value === 'b');
-                boardRenderer.setFlipped(isFlipped);
+                setBoardOrientation(practiceSelectSide.value === 'b');
                 updateUI();
             }
         });
@@ -2434,8 +2504,7 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedSquare = null;
 
         chess.load(s.fen);
-        isFlipped = (practicePlayerColor === 'b');
-        boardRenderer.setFlipped(isFlipped);
+        setBoardOrientation(practicePlayerColor === 'b');
         boardRenderer.clearArrows();
         boardRenderer.clearHighlights();
 
@@ -2728,6 +2797,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 turnIndicator.textContent = chess.turn() === 'w' ? "WHITE'S TURN" : "BLACK'S TURN";
                 turnIndicator.style.color = "var(--accent-emerald)";
             }
+        }
+
+        if (evalBarContainer) {
+            evalBarContainer.classList.toggle('flipped', isFlipped);
         }
 
         renderMoveTable();

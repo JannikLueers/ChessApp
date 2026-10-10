@@ -181,6 +181,10 @@ main {
     align-self: center;
 }
 
+.eval-bar-container.flipped {
+    flex-direction: column-reverse;
+}
+
 .eval-bar-black {
     background: #0f172a;
     width: 100%;
@@ -193,19 +197,46 @@ main {
     flex: 1;
 }
 
+.eval-bar-container.flipped .eval-bar-white {
+    background: linear-gradient(0deg, #ffffff 0%, #cbd5e1 100%);
+}
+
 .eval-text {
     position: absolute;
+    left: 0;
     width: 100%;
     text-align: center;
-    font-size: 0.7rem;
+    font-size: 0.68rem;
     font-weight: 800;
-    color: #0f172a;
-    background: rgba(255, 255, 255, 0.9);
     padding: 2px 0;
-    bottom: 6px;
     border-radius: 4px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    transition: opacity 0.2s ease, transform 0.2s ease;
+    transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+    z-index: 2;
+    pointer-events: none;
+    box-sizing: border-box;
+}
+
+.eval-text.pos-bottom {
+    bottom: 6px;
+    top: auto;
+}
+
+.eval-text.pos-top {
+    top: 6px;
+    bottom: auto;
+}
+
+.eval-text.theme-light {
+    color: #0f172a;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.eval-text.theme-dark {
+    color: #f8fafc;
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.35);
 }
 
 .eval-text.calculating {
@@ -1129,8 +1160,13 @@ main {
         padding: 0.5rem 0.75rem;
     }
 
-    .board-wrapper, .eval-bar-container {
+    .board-wrapper {
         width: min(calc(100% - 42px), calc(100vh - 84px));
+        height: min(calc(100% - 42px), calc(100vh - 84px));
+    }
+
+    .eval-bar-container {
+        width: 26px;
         height: min(calc(100% - 42px), calc(100vh - 84px));
     }
 }
