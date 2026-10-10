@@ -7,7 +7,10 @@
     <!-- Knight SVG Favicon for Browser Tab -->
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 45 45'%3E%3Crect width='45' height='45' rx='10' fill='%23090d16'/%3E%3Cg fill='none' fill-rule='evenodd' stroke='%2310b981' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M 22,10 C 32.5,11 38.5,18 38,39 L 15,39 C 15,30 13,25 9,21 C 8,19 11,16 13,16 C 16,16 16.5,18 19,18 C 21,18 21.5,15 22.5,13.5 C 23.5,12 21.5,10.5 22,10 z' fill='%23121929'/%3E%3Cpath d='M 24,18 C 24.38,20.25 22.75,22.75 20.5,23.5 C 18.25,24.25 16.25,23.25 15,21.25 C 13.75,19.25 14.25,16.75 16.5,16 C 18.75,15.25 20.75,16.25 22,18.25' fill='%23121929'/%3E%3Ccircle cx='9.5' cy='25.5' r='1.5' fill='%2310b981'/%3E%3Cpath d='M 13.5,15.5 C 12.5,13 11,11 7.5,10.5 C 11.5,10 16,12.5 17,14' fill='%23121929'/%3E%3C/g%3E%3C/svg%3E">
-    <link rel="stylesheet" href="css/style.css">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link rel="stylesheet" href="css/style.css?v=2.2">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -336,12 +339,12 @@
                         </div>
                         
                         <div class="opening-stepper-btns">
-                            <button id="btn-op-first" class="btn btn-stepper" title="Jump to Starting Position">|◀</button>
-                            <button id="btn-op-prev" class="btn btn-stepper" title="Previous Move (Step Back)">◀ Prev</button>
-                            <button id="btn-op-next" class="btn btn-stepper btn-primary" title="Next Move (Step Forward)">Next ▶</button>
-                            <button id="btn-op-last" class="btn btn-stepper" title="Jump to End of Opening">▶|</button>
+                            <button id="btn-op-first" class="btn btn-stepper" title="Jump to Starting Position (|◀ / Home)">|◀</button>
+                            <button id="btn-op-prev" class="btn btn-stepper" title="Previous Move (Step Back / ◀ Arrow)">Prev ◀</button>
+                            <button id="btn-op-next" class="btn btn-stepper btn-primary" title="Next Move (Step Forward / ▶ Arrow / Space)">Next ▶</button>
+                            <button id="btn-op-last" class="btn btn-stepper" title="Jump to End of Opening (▶| / End)">▶|</button>
                             <button id="btn-op-autoplay" class="btn btn-stepper" title="Auto-Play Opening Line">▶ Auto</button>
-                            <button id="btn-op-reset" class="btn btn-stepper" title="Reset to Start">🔄</button>
+                            <button id="btn-op-reset" class="btn btn-stepper" title="Reset to Start (Home)">🔄</button>
                         </div>
 
                         <!-- Current Move Explanation Callout (Directly under stepper buttons for immediate visibility) -->
@@ -469,9 +472,10 @@
                         <div id="practice-tip-text-ingame" class="practice-tip-text"></div>
                     </div>
 
-                    <div class="control-grid" style="margin-top: 0.5rem;">
-                        <button id="btn-practice-retry" class="btn">🔄 Retry</button>
-                        <button id="btn-practice-back" class="btn">← Back to list</button>
+                    <div class="control-grid" style="margin-top: 0.5rem; grid-template-columns: repeat(3, 1fr);">
+                        <button id="btn-practice-undo" class="btn" title="Undo Move (◀ Arrow / Backspace)">↩ Undo</button>
+                        <button id="btn-practice-retry" class="btn" title="Retry Scenario">🔄 Retry</button>
+                        <button id="btn-practice-back" class="btn" title="Back to Openings / Scenarios">← Back</button>
                     </div>
                 </div>
             </div>
@@ -591,14 +595,14 @@
     <!-- Scripts -->
     <script src="js/chess.min.js"></script>
     <script src="js/stockfishEngine.js"></script>
-    <script src="js/openings.js"></script>
-    <script src="js/pieces.js"></script>
-    <script src="js/boardRenderer.js"></script>
-    <script src="js/pgnParser.js"></script>
-    <script src="js/puzzles.js"></script>
-    <script src="js/audio.js"></script>
-    <script src="js/practice.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/openings.js?v=2.2"></script>
+    <script src="js/pieces.js?v=2.2"></script>
+    <script src="js/boardRenderer.js?v=2.2"></script>
+    <script src="js/pgnParser.js?v=2.2"></script>
+    <script src="js/puzzles.js?v=2.2"></script>
+    <script src="js/audio.js?v=2.2"></script>
+    <script src="js/practice.js?v=2.2"></script>
+    <script src="js/app.js?v=2.2"></script>
 
 </body>
 </html>

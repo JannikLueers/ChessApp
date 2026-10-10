@@ -1851,11 +1851,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     btnFirstMove.addEventListener('click', () => {
+        if (isOpeningPracticeActive) {
+            resetOpeningToStart();
+            return;
+        }
         if (freeModeState.active) renderFreeModeStep(0);
         else if (simulationState.active) renderSimulationStep(0);
         else jumpToAnalysisStep(0);
     });
     btnPrevMove.addEventListener('click', () => {
+        if (isOpeningPracticeActive) {
+            stepOpeningBackward();
+            return;
+        }
+        if (practiceIsActive) {
+            undoPracticeMove();
+            return;
+        }
         if (freeModeState.active) {
             if (freeModeState.currentIndex > 0) renderFreeModeStep(freeModeState.currentIndex - 1);
             else exitFreeMode();
@@ -1863,6 +1875,10 @@ document.addEventListener('DOMContentLoaded', () => {
         else jumpToAnalysisStep(analysisStep - 1);
     });
     btnNextMove.addEventListener('click', () => {
+        if (isOpeningPracticeActive) {
+            stepOpeningForward();
+            return;
+        }
         if (freeModeState.active) {
             if (freeModeState.currentIndex < freeModeState.branch.length - 1) {
                 renderFreeModeStep(freeModeState.currentIndex + 1);
@@ -1879,6 +1895,10 @@ document.addEventListener('DOMContentLoaded', () => {
         else jumpToAnalysisStep(analysisStep + 1);
     });
     btnLastMove.addEventListener('click', () => {
+        if (isOpeningPracticeActive) {
+            jumpOpeningToEnd();
+            return;
+        }
         if (freeModeState.active) renderFreeModeStep(freeModeState.branch.length - 1);
         else if (simulationState.active) renderSimulationStep(simulationState.line.length - 1);
         else if (analyzedGame) jumpToAnalysisStep(analyzedGame.moves.length);
@@ -1886,6 +1906,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.addEventListener('keydown', (e) => {
         if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+
+        // Keyboard navigation during Opening Practice
+        if (isOpeningPracticeActive) {
+            if (e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                stepOpeningForward();
+                return;
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                stepOpeningBackward();
+                return;
+            } else if (e.key === 'Home') {
+                e.preventDefault();
+                resetOpeningToStart();
+                return;
+            } else if (e.key === 'End') {
+                e.preventDefault();
+                jumpOpeningToEnd();
+                return;
+            }
+        }
+
+        // Keyboard navigation during Practice session vs Stockfish
+        if (practiceIsActive) {
+            if (e.key === 'ArrowLeft' || e.key === 'Backspace' || e.key === 'u' || e.key === 'U') {
+                e.preventDefault();
+                undoPracticeMove();
+                return;
+            }
+        }
+
         if (currentMode !== 'analysis' || !analyzedGame) return;
 
         if (e.key === 's' || e.key === 'S') {
@@ -2465,6 +2516,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const practiceIngameSide    = document.getElementById('practice-ingame-side');
     const practiceResultBanner  = document.getElementById('practice-result-banner');
     const btnPracticeRetry      = document.getElementById('btn-practice-retry');
+    const btnPracticeUndo       = document.getElementById('btn-practice-undo');
     const btnPracticeBack       = document.getElementById('btn-practice-back');
     const categoryPills         = document.querySelectorAll('.practice-pill');
 
@@ -2701,16 +2753,44 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateOpeningStepperUI(lastMoveObj) {
         if (!activeOpeningScenario) return;
 
-        if (openingMoveCounter) {
-            openingMoveCounter.textContent = `Move ${openingMoveIndex} / ${openingMainLine.length}`;
-        }
+        const totalMoves = (openingMainLine && openingMainLine.length) ? openingMainLine.length : 0;
+        const counterStr = `Move ${openingMoveIndex} / ${totalMoves}`;
 
-        // Buttons state
-        if (btnOpPrev)  btnOpPrev.disabled = (openingMoveIndex <= 0);
-        if (btnOpFirst) btnOpFirst.disabled = (openingMoveIndex <= 0);
-        if (btnOpReset) btnOpReset.disabled = (openingMoveIndex <= 0);
-        if (btnOpNext)  btnOpNext.disabled = (openingMoveIndex >= openingMainLine.length);
-        if (btnOpLast)  btnOpLast.disabled = (openingMoveIndex >= openingMainLine.length);
+        // Update counter reliably across cached refs and DOM elements
+        if (openingMoveCounter) {
+            openingMoveCounter.textContent = counterStr;
+        }
+        const counterEl = document.getElementById('opening-move-counter');
+        if (counterEl) {
+            counterEl.textContent = counterStr;
+        }
+        document.querySelectorAll('.opening-move-counter').forEach(el => {
+            el.textContent = counterStr;
+        });
+
+        // Stepper buttons: ALWAYS ENABLED and CLICKABLE — NEVER BLOCKED / GRAYED OUT
+        if (btnOpPrev) {
+            btnOpPrev.disabled = false;
+            btnOpPrev.innerHTML = 'Prev ◀';
+            btnOpPrev.title = 'Previous Move (Prev ◀ / ◀ Arrow)';
+        }
+        if (btnOpNext) {
+            btnOpNext.disabled = false;
+            btnOpNext.innerHTML = 'Next ▶';
+            btnOpNext.title = 'Next Move (Next ▶ / ▶ Arrow / Space)';
+        }
+        if (btnOpFirst) {
+            btnOpFirst.disabled = false;
+            btnOpFirst.title = 'Jump to Start (|◀ / Home)';
+        }
+        if (btnOpLast) {
+            btnOpLast.disabled = false;
+            btnOpLast.title = 'Jump to End of Line (▶| / End)';
+        }
+        if (btnOpReset) {
+            btnOpReset.disabled = false;
+            btnOpReset.title = 'Reset to Start (🔄 / Home)';
+        }
 
         renderOpeningMovesStrip();
 
@@ -2901,9 +2981,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const nextSan = openingMainLine[openingMoveIndex];
-        const moveObj = chess.move(nextSan);
+        let moveObj = chess.move(nextSan);
         if (!moveObj) {
-            stopOpeningAutoPlay();
+            // Position diverged due to hand move: resync to this move in main line
+            jumpOpeningToMove(openingMoveIndex + 1);
             return;
         }
 
@@ -2919,12 +3000,17 @@ document.addEventListener('DOMContentLoaded', () => {
         boardRenderer.highlightSquare(moveObj.from, 'rgba(16, 185, 129, 0.35)');
         boardRenderer.highlightSquare(moveObj.to, 'rgba(16, 185, 129, 0.45)');
 
-        handleOpeningMoveAnalyzed(moveObj);
+        // Step forward manually: DO NOT trigger auto-reply so player can read move commentary
+        handleOpeningMoveAnalyzed(moveObj, false);
     }
 
     function stepOpeningBackward() {
         if (!isOpeningPracticeActive || !activeOpeningScenario) return;
-        if (openingMoveIndex <= 0) return;
+        if (openingMoveIndex <= 0) {
+            stopOpeningAutoPlay();
+            resetOpeningToStart();
+            return;
+        }
 
         stopOpeningAutoPlay();
         chess.undo();
@@ -3067,6 +3153,42 @@ document.addEventListener('DOMContentLoaded', () => {
 
         handleOpeningMoveAnalyzed(moveObj);
         return true;
+    }
+
+    function handleOpeningSquareClick(sqName) {
+        if (!isOpeningPracticeActive || !activeOpeningScenario) return;
+
+        if (selectedSquare === sqName && wasSelectedBeforePickup) {
+            selectedSquare = null;
+            wasSelectedBeforePickup = false;
+            updateUI();
+            return;
+        }
+        if (selectedSquare === sqName && !wasSelectedBeforePickup) return;
+
+        if (selectedSquare) {
+            if (isLegalMove(selectedSquare, sqName)) {
+                const isPromo = checkIsPromotionMove(selectedSquare, sqName);
+                if (isPromo) {
+                    promptPawnPromotion(selectedSquare, sqName, chess.turn(), (chosenPiece) => {
+                        executeOpeningHandMove(selectedSquare, sqName, chosenPiece);
+                        selectedSquare = null;
+                    });
+                    return;
+                }
+                executeOpeningHandMove(selectedSquare, sqName, 'q');
+                selectedSquare = null;
+                return;
+            }
+        }
+
+        const piece = chess.get(sqName);
+        if (piece && piece.color === chess.turn()) {
+            selectedSquare = sqName;
+        } else {
+            selectedSquare = null;
+        }
+        updateUI();
     }
 
     function handleOpeningMoveAnalyzed(moveObj, triggerAutoReply = true) {
@@ -3236,10 +3358,13 @@ document.addEventListener('DOMContentLoaded', () => {
             triggerEngineEvaluation();
 
             if (chess.turn() !== practicePlayerColor) {
-                setTimeout(makePracticeBotMove, 500);
+                practiceBotTimeout = setTimeout(makePracticeBotMove, 500);
             }
         });
     }
+
+    let practiceBotTimeout = null;
+    let practiceFallbackTimer = null;
 
     if (practiceSelectSide) {
         practiceSelectSide.addEventListener('change', () => {
@@ -3289,7 +3414,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // If the player chose a side where it's the bot's turn first, make bot move
         if (chess.turn() !== practicePlayerColor) {
-            setTimeout(makePracticeBotMove, 500);
+            practiceBotTimeout = setTimeout(makePracticeBotMove, 500);
         }
     }
 
@@ -3315,7 +3440,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (chess.turn() !== practicePlayerColor) {
-            setTimeout(makePracticeBotMove, 450);
+            practiceBotTimeout = setTimeout(makePracticeBotMove, 450);
         }
         return true;
     }
@@ -3368,7 +3493,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let botMoved = false;
 
-        const fallbackTimer = setTimeout(() => {
+        practiceFallbackTimer = setTimeout(() => {
             if (botMoved || chess.turn() === practicePlayerColor) return;
             const lm = chess.moves({ verbose: true });
             if (lm.length > 0) {
@@ -3383,7 +3508,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const moveObj = chess.move({ from, to, promotion: promo || 'q' });
             if (!moveObj) return;
             botMoved = true;
-            clearTimeout(fallbackTimer);
+            if (practiceFallbackTimer) {
+                clearTimeout(practiceFallbackTimer);
+                practiceFallbackTimer = null;
+            }
+            practiceBotTimeout = null;
 
             if (chess.in_check()) sounds.playCheck();
             else if (moveObj.captured) sounds.playCapture();
@@ -3400,7 +3529,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         practiceEngine.setSkillLevel(skillLevel, targetElo);
         practiceEngine.getBestMove(chess.fen(), depth, (bestMoveStr) => {
-            clearTimeout(fallbackTimer);
+            if (practiceFallbackTimer) {
+                clearTimeout(practiceFallbackTimer);
+                practiceFallbackTimer = null;
+            }
+            practiceBotTimeout = null;
             if (botMoved || chess.turn() === practicePlayerColor) return;
             if (!bestMoveStr) return;
 
@@ -3468,8 +3601,96 @@ document.addEventListener('DOMContentLoaded', () => {
         renderPracticeScenarioList(practiceCurrentCategory);
     }
 
+    function undoPracticeMove() {
+        if (!practiceIsActive) return;
+
+        if (practiceBotTimeout) {
+            clearTimeout(practiceBotTimeout);
+            practiceBotTimeout = null;
+        }
+        if (practiceFallbackTimer) {
+            clearTimeout(practiceFallbackTimer);
+            practiceFallbackTimer = null;
+        }
+        if (practiceEngine) {
+            practiceEngine.stop();
+        }
+
+        if (practiceResultBanner) practiceResultBanner.style.display = 'none';
+        practiceIsActive = true;
+
+        const history = chess.history();
+        if (!history || history.length === 0) return;
+
+        // If it's the player's turn, Stockfish just replied to the player's move.
+        // Undo both the bot's move and the player's move so player can make another move.
+        // If it's the bot's turn (player just moved and bot hasn't moved yet), undo 1 move.
+        let movesToUndo = 1;
+        if (chess.turn() === practicePlayerColor) {
+            movesToUndo = (history.length >= 2) ? 2 : 1;
+        } else {
+            movesToUndo = 1;
+        }
+
+        for (let i = 0; i < movesToUndo; i++) {
+            chess.undo();
+            if (moveHistory.length > 0) {
+                moveHistory.pop();
+            }
+        }
+
+        sounds.playMove();
+        selectedSquare = null;
+        boardRenderer.clearArrows();
+        boardRenderer.clearHighlights();
+
+        if (moveHistory.length > 0) {
+            const lastMove = moveHistory[moveHistory.length - 1];
+            boardRenderer.highlightSquare(lastMove.from, 'rgba(16, 185, 129, 0.35)');
+            boardRenderer.highlightSquare(lastMove.to, 'rgba(16, 185, 129, 0.45)');
+        }
+
+        updateUI();
+        triggerPracticeEvaluation();
+    }
+
+    if (btnPracticeUndo) {
+        btnPracticeUndo.addEventListener('click', () => {
+            undoPracticeMove();
+        });
+    }
+
     if (btnPracticeRetry) {
         btnPracticeRetry.addEventListener('click', () => {
+            if (practiceBotTimeout) {
+                clearTimeout(practiceBotTimeout);
+                practiceBotTimeout = null;
+            }
+            if (practiceFallbackTimer) {
+                clearTimeout(practiceFallbackTimer);
+                practiceFallbackTimer = null;
+            }
+            if (practiceEngine) {
+                practiceEngine.stop();
+            }
+            if (activeOpeningScenario) {
+                chess.reset();
+                for (const m of openingHistoryMoves) {
+                    chess.move(m);
+                }
+                moveHistory = [...openingHistoryMoves];
+                selectedSquare = null;
+                practiceIsActive = true;
+                if (practiceResultBanner) practiceResultBanner.style.display = 'none';
+                boardRenderer.clearArrows();
+                boardRenderer.clearHighlights();
+                updateUI();
+                triggerPracticeEvaluation();
+                if (chess.turn() !== practicePlayerColor) {
+                    practiceBotTimeout = setTimeout(makePracticeBotMove, 500);
+                }
+                return;
+            }
             if (!practiceManager.currentScenario) return;
             startPracticeSession();
         });
@@ -3477,11 +3698,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (btnPracticeBack) {
         btnPracticeBack.addEventListener('click', () => {
+            if (practiceBotTimeout) {
+                clearTimeout(practiceBotTimeout);
+                practiceBotTimeout = null;
+            }
+            if (practiceFallbackTimer) {
+                clearTimeout(practiceFallbackTimer);
+                practiceFallbackTimer = null;
+            }
+            if (practiceEngine) {
+                practiceEngine.stop();
+            }
             practiceIsActive = false;
             isOpeningPracticeActive = false;
             stopOpeningAutoPlay();
             practiceIngameControls.style.display = 'none';
             practiceDetailPanel.style.display = 'none';
+            if (activeOpeningScenario) {
+                startOpeningStudy(activeOpeningScenario);
+                return;
+            }
             if (practiceOpeningPanel) practiceOpeningPanel.style.display = 'none';
             practiceScenarioList.style.display = 'flex';
             boardRenderer.clearArrows();
