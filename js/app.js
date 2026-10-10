@@ -92,6 +92,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let practicePlayerColor = 'w';
     let practiceIsActive = false;
     let practiceCurrentCategory = 'endgames';
+    let practiceOpeningsSubfilter = 'all'; // 'all', 'w', or 'b'
+    let isOpeningPracticeActive = false;
+    let activeOpeningScenario = null;
+    let openingMoveIndex = 0;
+    let openingHistoryMoves = [];
+    let openingMainLine = [];
+    let openingAutoPlayInterval = null;
 
 
     // Default Historical Masterpiece for Analysis Tab Fallback
@@ -197,6 +204,8 @@ document.addEventListener('DOMContentLoaded', () => {
         practiceControlsCard.style.display = 'none';
         moveHistoryCard.style.display = 'flex';
         practiceIsActive = false;
+        isOpeningPracticeActive = false;
+        stopOpeningAutoPlay();
         if (selectSide) {
             playerColor = selectSide.value;
             setBoardOrientation(playerColor === 'b');
@@ -217,6 +226,8 @@ document.addEventListener('DOMContentLoaded', () => {
         practiceControlsCard.style.display = 'none';
         moveHistoryCard.style.display = 'flex';
         practiceIsActive = false;
+        isOpeningPracticeActive = false;
+        stopOpeningAutoPlay();
 
         if (analyzedGame) {
             if (analyzedGame.evalScores && analyzedGame.evalScores.length > 0) {
@@ -249,6 +260,8 @@ document.addEventListener('DOMContentLoaded', () => {
         practiceControlsCard.style.display = 'none';
         moveHistoryCard.style.display = 'none';
         practiceIsActive = false;
+        isOpeningPracticeActive = false;
+        stopOpeningAutoPlay();
         loadNextPuzzle();
     });
 
@@ -265,6 +278,18 @@ document.addEventListener('DOMContentLoaded', () => {
         practiceControlsCard.style.display = 'block';
         moveHistoryCard.style.display = 'none';
         practiceIsActive = false;
+        isOpeningPracticeActive = false;
+        stopOpeningAutoPlay();
+        if (practiceOpeningPanel) practiceOpeningPanel.style.display = 'none';
+        if (practiceDetailPanel) practiceDetailPanel.style.display = 'none';
+        if (practiceIngameControls) practiceIngameControls.style.display = 'none';
+        if (practiceScenarioList) practiceScenarioList.style.display = 'flex';
+        if (practiceCurrentCategory === 'openings') {
+            if (practiceOpeningsFilterBar) practiceOpeningsFilterBar.style.display = 'flex';
+            updateOpeningsCountBadges();
+        } else {
+            if (practiceOpeningsFilterBar) practiceOpeningsFilterBar.style.display = 'none';
+        }
         chess.reset();
         updateUI();
         renderPracticeScenarioList(practiceCurrentCategory);
@@ -402,6 +427,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (currentMode === 'practice') {
+            if (isOpeningPracticeActive) {
+                if (chess.game_over()) return false;
+                const piece = chess.get(sqName);
+                if (piece && piece.color === chess.turn()) {
+                    wasSelectedBeforePickup = (selectedSquare === sqName);
+                    selectedSquare = sqName;
+                    updateUI();
+                    return true;
+                }
+                return false;
+            }
             if (!practiceIsActive || chess.game_over()) return false;
             if (chess.turn() !== practicePlayerColor) return false;
             const piece = chess.get(sqName);
@@ -449,6 +485,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (currentMode === 'practice') {
+            if (isOpeningPracticeActive) {
+                if (chess.game_over()) return;
+                handleOpeningSquareClick(sqName);
+                return;
+            }
             if (!practiceIsActive || chess.game_over()) return;
             if (chess.turn() !== practicePlayerColor) return;
             handlePracticeSquareClick(sqName);
@@ -553,6 +594,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (currentMode === 'practice') {
+            if (isOpeningPracticeActive) {
+                if (chess.game_over()) return;
+                if (!fromSq || !toSq || fromSq === toSq || !isLegalMove(fromSq, toSq)) {
+                    selectedSquare = fromSq;
+                    updateUI();
+                    return;
+                }
+                const isPromo = checkIsPromotionMove(fromSq, toSq);
+                if (isPromo) {
+                    promptPawnPromotion(fromSq, toSq, chess.turn(), (chosenPiece) => {
+                        executeOpeningHandMove(fromSq, toSq, chosenPiece);
+                        selectedSquare = null;
+                    });
+                    return;
+                }
+                executeOpeningHandMove(fromSq, toSq, 'q');
+                selectedSquare = null;
+                return;
+            }
             if (!practiceIsActive || chess.game_over()) return;
             if (chess.turn() !== practicePlayerColor) { selectedSquare = null; updateUI(); return; }
             if (!fromSq || !toSq || fromSq === toSq || !isLegalMove(fromSq, toSq)) {
@@ -2404,22 +2464,96 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnPracticeBack       = document.getElementById('btn-practice-back');
     const categoryPills         = document.querySelectorAll('.practice-pill');
 
+    // DOM refs for openings study panel & subfilters
+    const practiceOpeningsFilterBar = document.getElementById('practice-openings-filter-bar');
+    const practiceSubpills          = document.querySelectorAll('.practice-subpill');
+    const countAllOpenings          = document.getElementById('count-all-openings');
+    const countWhiteOpenings        = document.getElementById('count-white-openings');
+    const countBlackOpenings        = document.getElementById('count-black-openings');
+
+    const practiceOpeningPanel      = document.getElementById('practice-opening-panel');
+    const btnOpBackToList           = document.getElementById('btn-op-back-to-list');
+    const openingSideBadge          = document.getElementById('opening-side-badge');
+    const openingHeaderIcon         = document.getElementById('opening-header-icon');
+    const openingHeaderName         = document.getElementById('opening-header-name');
+    const openingHeaderEco          = document.getElementById('opening-header-eco');
+
+    const openingMoveCounter        = document.getElementById('opening-move-counter');
+    const btnOpFirst                = document.getElementById('btn-op-first');
+    const btnOpPrev                 = document.getElementById('btn-op-prev');
+    const btnOpNext                 = document.getElementById('btn-op-next');
+    const btnOpLast                 = document.getElementById('btn-op-last');
+    const btnOpAutoPlay             = document.getElementById('btn-op-autoplay');
+    const btnOpReset                = document.getElementById('btn-op-reset');
+    const openingMovesStrip         = document.getElementById('opening-moves-strip');
+    const openingMoveBoxBadge       = document.getElementById('opening-move-box-badge');
+    const openingMoveBoxText        = document.getElementById('opening-move-box-text');
+
+    const chkOpAutoReply            = document.getElementById('chk-op-auto-reply');
+    const openingOpponentChipsContainer = document.getElementById('opening-opponent-chips-container');
+    const openingTheoryFeedback     = document.getElementById('opening-theory-feedback');
+    const openingTheoryStatus       = document.getElementById('opening-theory-status');
+    const openingTheoryDesc         = document.getElementById('opening-theory-desc');
+    const btnOpPlayTheoryMove       = document.getElementById('btn-op-play-theory-move');
+    const opTheoryMoveName          = document.getElementById('op-theory-move-name');
+    const btnOpPlayBot              = document.getElementById('btn-op-play-bot');
+    const openingLiteratureContent  = document.getElementById('opening-literature-content');
+
     // Category pill switching
     categoryPills.forEach(pill => {
         pill.addEventListener('click', () => {
             categoryPills.forEach(p => p.classList.remove('active'));
             pill.classList.add('active');
             practiceCurrentCategory = pill.dataset.category;
+            stopOpeningAutoPlay();
+            isOpeningPracticeActive = false;
             practiceDetailPanel.style.display = 'none';
+            if (practiceOpeningPanel) practiceOpeningPanel.style.display = 'none';
             practiceIngameControls.style.display = 'none';
             practiceScenarioList.style.display = 'flex';
+
+            if (practiceCurrentCategory === 'openings') {
+                if (practiceOpeningsFilterBar) practiceOpeningsFilterBar.style.display = 'flex';
+                updateOpeningsCountBadges();
+            } else {
+                if (practiceOpeningsFilterBar) practiceOpeningsFilterBar.style.display = 'none';
+            }
+
             renderPracticeScenarioList(practiceCurrentCategory);
         });
     });
 
+    // Subfilter pills (All, White, Black) for Openings
+    if (practiceSubpills) {
+        practiceSubpills.forEach(subpill => {
+            subpill.addEventListener('click', () => {
+                practiceSubpills.forEach(p => p.classList.remove('active'));
+                subpill.classList.add('active');
+                practiceOpeningsSubfilter = subpill.dataset.subfilter || 'all';
+                renderPracticeScenarioList('openings');
+            });
+        });
+    }
+
+    function updateOpeningsCountBadges() {
+        if (countAllOpenings) countAllOpenings.textContent = practiceManager.getOpeningsBySide('all').length;
+        if (countWhiteOpenings) countWhiteOpenings.textContent = practiceManager.getOpeningsBySide('w').length;
+        if (countBlackOpenings) countBlackOpenings.textContent = practiceManager.getOpeningsBySide('b').length;
+    }
+
     function renderPracticeScenarioList(category) {
         practiceScenarioList.innerHTML = '';
-        const scenarios = practiceManager.getScenariosForCategory(category);
+        let scenarios;
+        if (category === 'openings') {
+            scenarios = practiceManager.getOpeningsBySide(practiceOpeningsSubfilter);
+        } else {
+            scenarios = practiceManager.getScenariosForCategory(category);
+        }
+
+        const countText = document.getElementById('practice-scenario-count');
+        if (countText) {
+            countText.textContent = `${scenarios.length} Scenarios`;
+        }
 
         scenarios.forEach(s => {
             const result = practiceManager.getResult(s.id);
@@ -2428,15 +2562,25 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (result === 'draw') resultBadge = '<span class="practice-result-badge">🤝</span>';
             else if (result === 'loss') resultBadge = '<span class="practice-result-badge">❌</span>';
 
+            let sideBadge = '';
+            if (s.side) {
+                if (s.side === 'w') {
+                    sideBadge = '<span class="practice-result-badge" style="color: #34d399; font-weight: 800; font-size: 0.68rem; margin-right: 4px;">[White ♔]</span>';
+                } else if (s.side === 'b') {
+                    sideBadge = '<span class="practice-result-badge" style="color: #a78bfa; font-weight: 800; font-size: 0.68rem; margin-right: 4px;">[Black ♚]</span>';
+                }
+            }
+
             const card = document.createElement('button');
             card.className = 'practice-scenario-card';
             card.dataset.scenarioId = s.id;
             card.innerHTML = `
                 <span class="practice-scenario-icon">${s.icon}</span>
                 <span class="practice-scenario-info">
-                    <span class="practice-scenario-name">${s.name}</span>
+                    <span class="practice-scenario-name">${s.name} ${s.eco ? `<span style="font-size:0.65rem; color:var(--text-muted); font-weight:normal;">(${s.eco})</span>` : ''}</span>
                     <span class="practice-scenario-goal-short">${s.goal}</span>
                 </span>
+                ${sideBadge}
                 ${resultBadge}
             `;
             card.addEventListener('click', () => selectPracticeScenario(s.id));
@@ -2453,11 +2597,21 @@ document.addEventListener('DOMContentLoaded', () => {
             c.classList.toggle('active', c.dataset.scenarioId === scenarioId);
         });
 
+        if (s.category === 'openings') {
+            startOpeningStudy(s);
+            return;
+        }
+
+        // Non-opening scenario flow
+        stopOpeningAutoPlay();
+        isOpeningPracticeActive = false;
+        if (practiceOpeningPanel) practiceOpeningPanel.style.display = 'none';
+
         // Populate detail panel
         practiceDetailName.textContent = `${s.icon} ${s.name}`;
         practiceDetailGoal.textContent = `Goal: ${s.goal}`;
 
-        // Pre-select the recommended side for this scenario
+        // Pre-select recommended side
         practiceSelectSide.value = s.playAs;
 
         // Show tip
@@ -2469,7 +2623,7 @@ document.addEventListener('DOMContentLoaded', () => {
         practiceIngameControls.style.display = 'none';
         practiceResultBanner.style.display = 'none';
 
-        // Preview the position on the board (unplayable)
+        // Preview position
         chess.load(s.fen);
         practiceIsActive = false;
         const previewSide = practiceSelectSide.value;
@@ -2477,6 +2631,556 @@ document.addEventListener('DOMContentLoaded', () => {
         boardRenderer.clearArrows();
         boardRenderer.clearHighlights();
         updateUI();
+    }
+
+    // ==========================================================================
+    // OPENING STUDY & INTERACTIVE THEORY REPERTOIRE ENGINE
+    // ==========================================================================
+
+    function startOpeningStudy(s) {
+        stopOpeningAutoPlay();
+        isOpeningPracticeActive = true;
+        practiceIsActive = false;
+        activeOpeningScenario = s;
+        openingMoveIndex = 0;
+        openingHistoryMoves = [];
+        openingMainLine = s.moves || [];
+
+        // UI transitions
+        practiceScenarioList.style.display = 'none';
+        practiceDetailPanel.style.display = 'none';
+        practiceIngameControls.style.display = 'none';
+        if (practiceOpeningPanel) practiceOpeningPanel.style.display = 'flex';
+
+        // Orientation: if Black opening, flip board so player sees Black's perspective!
+        const isBlack = (s.side === 'b');
+        setBoardOrientation(isBlack);
+
+        // Reset board
+        chess.reset();
+        boardRenderer.clearArrows();
+        boardRenderer.clearHighlights();
+        selectedSquare = null;
+        updateUI();
+
+        // Populate header
+        if (openingHeaderIcon) openingHeaderIcon.textContent = s.icon;
+        if (openingHeaderName) openingHeaderName.textContent = s.name;
+        if (openingHeaderEco) openingHeaderEco.textContent = `ECO: ${s.eco || '—'} • ${s.side === 'w' ? 'White Opening' : 'Black Defense'}`;
+        
+        if (openingSideBadge) {
+            openingSideBadge.className = `opening-side-badge ${s.side === 'w' ? 'white' : 'black'}`;
+            openingSideBadge.textContent = s.side === 'w' ? '♔ White Opening' : '♚ Black Defense';
+        }
+
+        // Stepper UI
+        updateOpeningStepperUI(null);
+
+        // Literature content
+        renderOpeningLiterature(s);
+
+        // Common opponent chips for starting position
+        updateOpponentChips();
+
+        // Hide theory feedback initially
+        if (openingTheoryFeedback) openingTheoryFeedback.style.display = 'none';
+    }
+
+    function updateOpeningStepperUI(lastMoveObj) {
+        if (!activeOpeningScenario) return;
+
+        if (openingMoveCounter) {
+            openingMoveCounter.textContent = `Move ${openingMoveIndex} / ${openingMainLine.length}`;
+        }
+
+        // Buttons state
+        if (btnOpPrev)  btnOpPrev.disabled = (openingMoveIndex <= 0);
+        if (btnOpFirst) btnOpFirst.disabled = (openingMoveIndex <= 0);
+        if (btnOpReset) btnOpReset.disabled = (openingMoveIndex <= 0);
+        if (btnOpNext)  btnOpNext.disabled = (openingMoveIndex >= openingMainLine.length);
+        if (btnOpLast)  btnOpLast.disabled = (openingMoveIndex >= openingMainLine.length);
+
+        renderOpeningMovesStrip();
+
+        // Move explanation callout
+        if (openingMoveIndex === 0) {
+            if (openingMoveBoxBadge) openingMoveBoxBadge.textContent = 'STARTING POSITION';
+            if (openingMoveBoxText)  openingMoveBoxText.textContent = activeOpeningScenario.goal + ' Click Next ▶ or make moves on the board by hand to start training.';
+        } else {
+            const currentMoveNote = (activeOpeningScenario.moveExplanations && activeOpeningScenario.moveExplanations[openingMoveIndex - 1]) 
+                ? activeOpeningScenario.moveExplanations[openingMoveIndex - 1]
+                : (lastMoveObj ? `Move ${openingMoveIndex}: ${lastMoveObj.san}` : '');
+
+            const moveNum = Math.ceil(openingMoveIndex / 2);
+            const isWhiteTurnInGame = (openingMoveIndex % 2 === 1);
+            const movePrefix = isWhiteTurnInGame ? `${moveNum}. ` : `${moveNum}... `;
+
+            if (openingMoveBoxBadge) {
+                openingMoveBoxBadge.textContent = `MOVE ${openingMoveIndex}: ${movePrefix}${lastMoveObj ? lastMoveObj.san : (openingMainLine[openingMoveIndex - 1] || '')}`;
+            }
+            if (openingMoveBoxText) {
+                openingMoveBoxText.textContent = currentMoveNote || `Position reached after ${lastMoveObj ? lastMoveObj.san : ''}. Continue exploring theoretical responses.`;
+            }
+        }
+    }
+
+    function renderOpeningMovesStrip() {
+        if (!openingMovesStrip || !activeOpeningScenario) return;
+        openingMovesStrip.innerHTML = '';
+
+        openingMainLine.forEach((san, idx) => {
+            const moveNum = Math.ceil((idx + 1) / 2);
+            const isWhiteMove = (idx % 2 === 0);
+            const label = isWhiteMove ? `${moveNum}. ${san}` : `${san}`;
+
+            const chip = document.createElement('button');
+            chip.className = 'opening-move-chip';
+            if (idx === openingMoveIndex - 1) chip.classList.add('active');
+            else if (idx >= openingMoveIndex) chip.classList.add('future');
+
+            chip.textContent = label;
+            chip.title = `Jump to move ${idx + 1}`;
+            chip.addEventListener('click', () => jumpOpeningToMove(idx + 1));
+            openingMovesStrip.appendChild(chip);
+        });
+
+        // Auto-scroll active chip into view
+        const activeChip = openingMovesStrip.querySelector('.opening-move-chip.active');
+        if (activeChip) {
+            activeChip.scrollIntoView({ block: 'nearest', inline: 'center' });
+        }
+    }
+
+    function renderOpeningLiterature(s) {
+        if (!openingLiteratureContent || !s.literature) return;
+        const lit = s.literature;
+
+        openingLiteratureContent.innerHTML = `
+            <div class="literature-section">
+                <div class="literature-heading">📖 ${lit.bookTitle || 'Established Chess Literature'}</div>
+                <div class="literature-sources-tag">Key Sources: ${lit.sources || 'Classical Master Literature'}</div>
+                <div class="literature-text">${lit.generalIdea || s.tip}</div>
+            </div>
+
+            ${lit.pawnStructure ? `
+            <div class="literature-section">
+                <div class="literature-heading">♟ Pawn Structure & Central Architecture</div>
+                <div class="literature-text">${lit.pawnStructure}</div>
+            </div>` : ''}
+
+            ${lit.keyPlans ? `
+            <div class="literature-section">
+                <div class="literature-heading">🎯 Strategic Plans & Master Maneuvers</div>
+                <div class="literature-text" style="white-space: pre-line;">${lit.keyPlans}</div>
+            </div>` : ''}
+
+            ${lit.criticalSquares ? `
+            <div class="literature-section">
+                <div class="literature-heading">🔑 Critical Squares & Outposts</div>
+                <div class="literature-text">${lit.criticalSquares}</div>
+            </div>` : ''}
+
+            ${lit.commonPitfalls ? `
+            <div class="literature-section">
+                <div class="literature-heading">⚠️ Common Pitfalls & Mistakes to Avoid</div>
+                <div class="literature-text">${lit.commonPitfalls}</div>
+            </div>` : ''}
+
+            ${lit.masterQuote ? `
+            <div class="literature-section">
+                <div class="literature-quote">
+                    ${lit.masterQuote}
+                </div>
+            </div>` : ''}
+        `;
+    }
+
+    function updateOpponentChips() {
+        if (!openingOpponentChipsContainer || !activeOpeningScenario) return;
+        openingOpponentChipsContainer.innerHTML = '';
+
+        const currentTurn = chess.turn();
+        const historySans = chess.history();
+        const historyKey = historySans.join(' ');
+
+        let candidateList = [];
+
+        // Check if activeOpeningScenario has specific branches for current moves
+        if (activeOpeningScenario.branches) {
+            if (activeOpeningScenario.branches[historyKey]) {
+                candidateList = activeOpeningScenario.branches[historyKey];
+            } else {
+                for (const key of Object.keys(activeOpeningScenario.branches)) {
+                    if (key === historyKey || (historyKey === '' && key === 'd4' && activeOpeningScenario.side === 'w' && currentTurn === 'b')) {
+                        candidateList = activeOpeningScenario.branches[key];
+                        break;
+                    }
+                }
+            }
+        }
+
+        // If no specific branch list, check main line next move
+        if (candidateList.length === 0 && openingMoveIndex < openingMainLine.length) {
+            const nextMainSan = openingMainLine[openingMoveIndex];
+            candidateList.push({
+                opponentMove: nextMainSan,
+                theoryResponse: openingMainLine[openingMoveIndex + 1] || null,
+                name: 'Main Line',
+                note: 'Theoretical continuation.'
+            });
+        }
+
+        // Also add other legal book options if available
+        if (candidateList.length === 0) {
+            const legalMoves = chess.moves();
+            legalMoves.slice(0, 5).forEach(m => {
+                candidateList.push({
+                    opponentMove: m,
+                    theoryResponse: null,
+                    name: 'Legal Move',
+                    note: 'Alternative reply.'
+                });
+            });
+        }
+
+        if (candidateList.length > 0) {
+            candidateList.forEach(cand => {
+                const chip = document.createElement('button');
+                chip.className = 'opponent-chip';
+                chip.textContent = `${cand.opponentMove} (${cand.name})`;
+                chip.title = cand.note || `Play ${cand.opponentMove} to see theory response`;
+                chip.addEventListener('click', () => {
+                    executeOpeningHandSanMove(cand.opponentMove);
+                });
+                openingOpponentChipsContainer.appendChild(chip);
+            });
+        } else {
+            openingOpponentChipsContainer.innerHTML = '<span style="font-size:0.68rem; color:var(--text-muted); font-style:italic;">Make any legal move on the board to test theory.</span>';
+        }
+    }
+
+    function stepOpeningForward() {
+        if (!isOpeningPracticeActive || !activeOpeningScenario) return;
+        if (openingMoveIndex >= openingMainLine.length) {
+            stopOpeningAutoPlay();
+            return;
+        }
+
+        const nextSan = openingMainLine[openingMoveIndex];
+        const moveObj = chess.move(nextSan);
+        if (!moveObj) {
+            stopOpeningAutoPlay();
+            return;
+        }
+
+        if (chess.in_check()) sounds.playCheck();
+        else if (moveObj.captured) sounds.playCapture();
+        else sounds.playMove();
+
+        openingHistoryMoves.push(moveObj);
+        openingMoveIndex++;
+
+        updateUI();
+        boardRenderer.clearHighlights();
+        boardRenderer.highlightSquare(moveObj.from, 'rgba(16, 185, 129, 0.35)');
+        boardRenderer.highlightSquare(moveObj.to, 'rgba(16, 185, 129, 0.45)');
+
+        handleOpeningMoveAnalyzed(moveObj);
+    }
+
+    function stepOpeningBackward() {
+        if (!isOpeningPracticeActive || !activeOpeningScenario) return;
+        if (openingMoveIndex <= 0) return;
+
+        stopOpeningAutoPlay();
+        chess.undo();
+        openingHistoryMoves.pop();
+        openingMoveIndex--;
+
+        sounds.playMove();
+        updateUI();
+        boardRenderer.clearHighlights();
+
+        if (openingHistoryMoves.length > 0) {
+            const lastMove = openingHistoryMoves[openingHistoryMoves.length - 1];
+            boardRenderer.highlightSquare(lastMove.from, 'rgba(16, 185, 129, 0.35)');
+            boardRenderer.highlightSquare(lastMove.to, 'rgba(16, 185, 129, 0.45)');
+            handleOpeningMoveAnalyzed(lastMove, false);
+        } else {
+            updateOpeningStepperUI(null);
+            updateOpponentChips();
+            if (openingTheoryFeedback) openingTheoryFeedback.style.display = 'none';
+        }
+    }
+
+    function jumpOpeningToMove(targetIndex) {
+        if (!isOpeningPracticeActive || !activeOpeningScenario) return;
+        stopOpeningAutoPlay();
+
+        chess.reset();
+        openingHistoryMoves = [];
+        openingMoveIndex = 0;
+
+        for (let i = 0; i < targetIndex && i < openingMainLine.length; i++) {
+            const m = chess.move(openingMainLine[i]);
+            if (m) {
+                openingHistoryMoves.push(m);
+                openingMoveIndex++;
+            }
+        }
+
+        sounds.playMove();
+        updateUI();
+        boardRenderer.clearHighlights();
+
+        if (openingHistoryMoves.length > 0) {
+            const lastMove = openingHistoryMoves[openingHistoryMoves.length - 1];
+            boardRenderer.highlightSquare(lastMove.from, 'rgba(16, 185, 129, 0.35)');
+            boardRenderer.highlightSquare(lastMove.to, 'rgba(16, 185, 129, 0.45)');
+            handleOpeningMoveAnalyzed(lastMove, false);
+        } else {
+            updateOpeningStepperUI(null);
+            updateOpponentChips();
+            if (openingTheoryFeedback) openingTheoryFeedback.style.display = 'none';
+        }
+    }
+
+    function resetOpeningToStart() {
+        jumpOpeningToMove(0);
+    }
+
+    function jumpOpeningToEnd() {
+        if (!activeOpeningScenario) return;
+        jumpOpeningToMove(openingMainLine.length);
+    }
+
+    function toggleOpeningAutoPlay() {
+        if (openingAutoPlayInterval) {
+            stopOpeningAutoPlay();
+        } else {
+            if (openingMoveIndex >= openingMainLine.length) {
+                resetOpeningToStart();
+            }
+            if (btnOpAutoPlay) {
+                btnOpAutoPlay.textContent = '⏸ Pause';
+                btnOpAutoPlay.classList.add('active');
+            }
+            openingAutoPlayInterval = setInterval(() => {
+                if (openingMoveIndex >= openingMainLine.length) {
+                    stopOpeningAutoPlay();
+                } else {
+                    stepOpeningForward();
+                }
+            }, 1250);
+        }
+    }
+
+    function stopOpeningAutoPlay() {
+        if (openingAutoPlayInterval) {
+            clearInterval(openingAutoPlayInterval);
+            openingAutoPlayInterval = null;
+        }
+        if (btnOpAutoPlay) {
+            btnOpAutoPlay.textContent = '▶ Auto';
+            btnOpAutoPlay.classList.remove('active');
+        }
+    }
+
+    function executeOpeningHandSanMove(san) {
+        if (!isOpeningPracticeActive || !activeOpeningScenario) return false;
+        const moveObj = chess.move(san);
+        if (!moveObj) return false;
+
+        if (chess.in_check()) sounds.playCheck();
+        else if (moveObj.captured) sounds.playCapture();
+        else sounds.playMove();
+
+        stopOpeningAutoPlay();
+        openingHistoryMoves.push(moveObj);
+        openingMoveIndex = openingHistoryMoves.length;
+
+        updateUI();
+        boardRenderer.clearHighlights();
+        boardRenderer.highlightSquare(moveObj.from, 'rgba(16, 185, 129, 0.35)');
+        boardRenderer.highlightSquare(moveObj.to, 'rgba(16, 185, 129, 0.45)');
+
+        handleOpeningMoveAnalyzed(moveObj);
+        return true;
+    }
+
+    function executeOpeningHandMove(from, to, promo = 'q') {
+        if (!isOpeningPracticeActive || !activeOpeningScenario) return false;
+
+        const legalMoves = chess.moves({ square: from, verbose: true });
+        const targetMove = legalMoves.find(m => m.to === to);
+        if (!targetMove) return false;
+
+        const moveObj = chess.move({ from, to, promotion: promo });
+        if (!moveObj) return false;
+
+        if (chess.in_check()) sounds.playCheck();
+        else if (moveObj.captured) sounds.playCapture();
+        else sounds.playMove();
+
+        stopOpeningAutoPlay();
+        openingHistoryMoves.push(moveObj);
+        openingMoveIndex = openingHistoryMoves.length;
+
+        updateUI();
+        boardRenderer.clearHighlights();
+        boardRenderer.highlightSquare(moveObj.from, 'rgba(16, 185, 129, 0.35)');
+        boardRenderer.highlightSquare(moveObj.to, 'rgba(16, 185, 129, 0.45)');
+
+        handleOpeningMoveAnalyzed(moveObj);
+        return true;
+    }
+
+    function handleOpeningMoveAnalyzed(moveObj, triggerAutoReply = true) {
+        if (!activeOpeningScenario || !moveObj) return;
+
+        updateOpeningStepperUI(moveObj);
+        updateOpponentChips();
+
+        const isPlayerColor = (moveObj.color === activeOpeningScenario.side);
+
+        if (!isPlayerColor) {
+            // Opponent move played! Look up theory response!
+            handleOpponentMoveTheoryResponse(moveObj, triggerAutoReply);
+        } else {
+            // Player move played! Check theory status
+            handlePlayerMoveTheoryStatus(moveObj);
+        }
+    }
+
+    function handleOpponentMoveTheoryResponse(moveObj, triggerAutoReply = true) {
+        if (!activeOpeningScenario || !openingTheoryFeedback) return;
+
+        const historySans = chess.history();
+        const prevHistoryKey = historySans.slice(0, -1).join(' ');
+
+        let matchedBranch = null;
+
+        // 1. Check branches
+        if (activeOpeningScenario.branches) {
+            for (const key of Object.keys(activeOpeningScenario.branches)) {
+                if (key === prevHistoryKey || prevHistoryKey.endsWith(key) || (prevHistoryKey === '' && key === 'd4')) {
+                    const list = activeOpeningScenario.branches[key];
+                    const found = list.find(b => b.opponentMove === moveObj.san);
+                    if (found) {
+                        matchedBranch = found;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 2. Check general opening theory recognition
+        const theory = (typeof OpeningTheory !== 'undefined') ? OpeningTheory.getTheoryAtStep(historySans) : null;
+
+        // Determine theoretical reply
+        let theoryReply = null;
+        if (matchedBranch && matchedBranch.theoryResponse) {
+            theoryReply = matchedBranch.theoryResponse;
+        } else if (openingMoveIndex < openingMainLine.length) {
+            theoryReply = openingMainLine[openingMoveIndex];
+        }
+
+        openingTheoryFeedback.style.display = 'block';
+
+        if (matchedBranch) {
+            if (openingTheoryStatus) openingTheoryStatus.textContent = `🎯 Theory Response: ${matchedBranch.name} (${moveObj.san})`;
+            if (openingTheoryDesc)   openingTheoryDesc.textContent = matchedBranch.note + (theoryReply ? ` Theory recommends: ${theoryReply}.` : '');
+        } else if (theory) {
+            if (openingTheoryStatus) openingTheoryStatus.textContent = `📘 Theory Recognized: ${theory.openingName} (${moveObj.san})`;
+            if (openingTheoryDesc)   openingTheoryDesc.textContent = `Opponent played ${moveObj.san}. ${theoryReply ? `Standard theoretical response: ${theoryReply}.` : 'Continue with sound positional principles.'}`;
+        } else {
+            if (openingTheoryStatus) openingTheoryStatus.textContent = `⚠️ Novelty / Off-Book Move (${moveObj.san})`;
+            if (openingTheoryDesc)   openingTheoryDesc.textContent = `This move deviates from standard theory in ${activeOpeningScenario.name}. Look to seize the center or exploit any tactical weaknesses!`;
+        }
+
+        // Setup Theory Move button & auto-reply
+        if (theoryReply && btnOpPlayTheoryMove) {
+            btnOpPlayTheoryMove.style.display = 'block';
+            if (opTheoryMoveName) opTheoryMoveName.textContent = theoryReply;
+            btnOpPlayTheoryMove.onclick = () => {
+                executeOpeningHandSanMove(theoryReply);
+            };
+
+            // If auto-reply is checked and triggerAutoReply is true
+            if (chkOpAutoReply && chkOpAutoReply.checked && triggerAutoReply) {
+                setTimeout(() => {
+                    if (isOpeningPracticeActive && chess.turn() === activeOpeningScenario.side && openingMoveIndex === historySans.length) {
+                        executeOpeningHandSanMove(theoryReply);
+                    }
+                }, 400);
+            }
+        } else if (btnOpPlayTheoryMove) {
+            btnOpPlayTheoryMove.style.display = 'none';
+        }
+    }
+
+    function handlePlayerMoveTheoryStatus(moveObj) {
+        if (!activeOpeningScenario) return;
+        if (openingTheoryFeedback) openingTheoryFeedback.style.display = 'none';
+
+        const mainLineMove = openingMainLine[openingMoveIndex - 1];
+        if (mainLineMove === moveObj.san) {
+            if (openingMoveBoxBadge) openingMoveBoxBadge.textContent = `✅ MAIN LINE: Move ${openingMoveIndex} (${moveObj.san})`;
+        } else {
+            if (openingMoveBoxBadge) openingMoveBoxBadge.textContent = `💡 ALTERNATIVE: Move ${openingMoveIndex} (${moveObj.san})`;
+        }
+    }
+
+    // Wire up Opening Control buttons
+    if (btnOpNext)     btnOpNext.addEventListener('click', () => stepOpeningForward());
+    if (btnOpPrev)     btnOpPrev.addEventListener('click', () => stepOpeningBackward());
+    if (btnOpFirst)    btnOpFirst.addEventListener('click', () => resetOpeningToStart());
+    if (btnOpLast)     btnOpLast.addEventListener('click', () => jumpOpeningToEnd());
+    if (btnOpReset)    btnOpReset.addEventListener('click', () => resetOpeningToStart());
+    if (btnOpAutoPlay) btnOpAutoPlay.addEventListener('click', () => toggleOpeningAutoPlay());
+
+    if (btnOpBackToList) {
+        btnOpBackToList.addEventListener('click', () => {
+            stopOpeningAutoPlay();
+            isOpeningPracticeActive = false;
+            if (practiceOpeningPanel) practiceOpeningPanel.style.display = 'none';
+            practiceScenarioList.style.display = 'flex';
+            boardRenderer.clearArrows();
+            boardRenderer.clearHighlights();
+            chess.reset();
+            updateUI();
+        });
+    }
+
+    if (btnOpPlayBot) {
+        btnOpPlayBot.addEventListener('click', () => {
+            if (!activeOpeningScenario) return;
+            stopOpeningAutoPlay();
+            isOpeningPracticeActive = false;
+
+            // Transition directly into bot practice session from current board position!
+            practiceManager.currentScenario = activeOpeningScenario;
+            practicePlayerColor = activeOpeningScenario.side;
+            practiceIsActive = true;
+            moveHistory = [...openingHistoryMoves];
+            selectedSquare = null;
+
+            if (practiceOpeningPanel) practiceOpeningPanel.style.display = 'none';
+            practiceIngameControls.style.display = 'block';
+            practiceResultBanner.style.display = 'none';
+            practiceIngameName.textContent = activeOpeningScenario.name;
+            const sideLabel = practicePlayerColor === 'w' ? 'Playing as White ♔' : 'Playing as Black ♚';
+            practiceIngameSide.textContent = sideLabel;
+            practiceHintsIngame.checked = practiceHintsChk.checked;
+            practiceTipTextIngame.textContent = activeOpeningScenario.tip;
+
+            updateUI();
+            triggerEngineEvaluation();
+
+            if (chess.turn() !== practicePlayerColor) {
+                setTimeout(makePracticeBotMove, 500);
+            }
+        });
     }
 
     if (practiceSelectSide) {
@@ -2716,8 +3420,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnPracticeBack) {
         btnPracticeBack.addEventListener('click', () => {
             practiceIsActive = false;
+            isOpeningPracticeActive = false;
+            stopOpeningAutoPlay();
             practiceIngameControls.style.display = 'none';
             practiceDetailPanel.style.display = 'none';
+            if (practiceOpeningPanel) practiceOpeningPanel.style.display = 'none';
             practiceScenarioList.style.display = 'flex';
             boardRenderer.clearArrows();
             boardRenderer.clearHighlights();

@@ -112,21 +112,25 @@ const OPENING_BOOK = [
     { name: "English Opening", eco: "A10", moves: ["c4"] },
     { name: "English Opening (Symmetrical)", eco: "A30", moves: ["c4", "c5"] },
     { name: "English Opening (King's English)", eco: "A20", moves: ["c4", "e5"] },
+    { name: "English Opening (King's English)", eco: "A29", moves: ["c4", "e5", "Nc3", "Nf6", "g3", "d5", "cxd5", "Nxd5", "Bg2"] },
+    { name: "English Opening (Four Knights)", eco: "A28", moves: ["c4", "e5", "Nc3", "Nf6", "Nf3", "Nc6"] },
     { name: "Scandinavian Defense", eco: "B01", moves: ["e4", "d5"] },
+    { name: "Scandinavian Defense (Main Line)", eco: "B01", moves: ["e4", "d5", "exd5", "Qxd5", "Nc3", "Qa5", "d4", "Nf6", "Nf3", "c6"] },
     { name: "Scandinavian Defense (Mieses-Kotroc)", eco: "B01", moves: ["e4", "d5", "exd5", "Qxd5", "Nc3", "Qa5"] },
     { name: "Scandinavian Defense (Portuguese Variation)", eco: "B01", moves: ["e4", "d5", "exd5", "Nf6"] },
     { name: "Alekhine's Defense", eco: "B02", moves: ["e4", "Nf6"] },
     { name: "Pirc Defense", eco: "B07", moves: ["e4", "d6", "d4", "Nf6", "Nc3", "g6"] },
     { name: "Modern Defense", eco: "B06", moves: ["e4", "g6"] },
     { name: "Dutch Defense", eco: "A80", moves: ["d4", "f5"] },
+    { name: "Dutch Defense (Leningrad)", eco: "A87", moves: ["d4", "f5", "g3", "Nf6", "Bg2", "g6", "Nf3", "Bg7", "O-O", "O-O", "c4", "d6"] },
+    { name: "Dutch Defense (Classical)", eco: "A84", moves: ["d4", "f5", "c4", "e6", "Nc3", "Nf6"] },
+    { name: "Dutch Defense (Stonewall)", eco: "A90", moves: ["d4", "f5", "c4", "e6", "g3", "Nf6", "Bg2", "d5"] },
     { name: "Reti Opening", eco: "A04", moves: ["Nf3"] },
     { name: "King's Indian Attack", eco: "A07", moves: ["Nf3", "d5", "g3"] },
     { name: "Trompowsky Attack", eco: "A45", moves: ["d4", "Nf6", "Bg5"] },
     { name: "Queen's Pawn Opening", eco: "D00", moves: ["d4", "d5"] },
     { name: "Queen's Pawn Opening", eco: "A40", moves: ["d4"] },
     { name: "King's Pawn Opening", eco: "C20", moves: ["e4"] },
-    { name: "English Opening", eco: "A10", moves: ["c4"] },
-    { name: "Reti Opening", eco: "A04", moves: ["Nf3"] },
     { name: "Bird's Opening", eco: "A02", moves: ["f4"] }
 ];
 
@@ -141,36 +145,61 @@ class OpeningTheory {
         const currentSans = movesSoFar.map(m => typeof m === 'string' ? m : (m.san || ''));
         const len = currentSans.length;
 
-        // 1. Check for matching openings that start with currentSans
-        const matchingOpenings = [];
+        // Check for matching openings:
+        // Case 1: Game moves match the prefix of book moves (len <= bookMoves.length)
+        // Case 2: Game moves continued past the book line (len > bookMoves.length, and all book moves match currentSans)
+        const candidateMatches = [];
 
         for (const opening of OPENING_BOOK) {
             const bookMoves = opening.moves;
-            let matches = true;
+            const bLen = bookMoves.length;
 
-            for (let i = 0; i < len; i++) {
-                if (i >= bookMoves.length || currentSans[i] !== bookMoves[i]) {
-                    matches = false;
-                    break;
+            if (len <= bLen) {
+                let matches = true;
+                for (let i = 0; i < len; i++) {
+                    if (currentSans[i] !== bookMoves[i]) {
+                        matches = false;
+                        break;
+                    }
                 }
-            }
-
-            if (matches) {
-                matchingOpenings.push(opening);
+                if (matches) {
+                    candidateMatches.push({ opening, type: 'in_progress', diff: bLen - len, matchLen: len });
+                }
+            } else {
+                let matches = true;
+                for (let i = 0; i < bLen; i++) {
+                    if (currentSans[i] !== bookMoves[i]) {
+                        matches = false;
+                        break;
+                    }
+                }
+                if (matches) {
+                    candidateMatches.push({ opening, type: 'past_book', diff: len - bLen, matchLen: bLen });
+                }
             }
         }
 
-        if (matchingOpenings.length === 0) return null;
+        if (candidateMatches.length === 0) return null;
 
-        // Sort candidates: Prefer an exact length match if exists; otherwise prefer the shortest matching line (most accurate current stage)
-        matchingOpenings.sort((a, b) => {
-            const diffA = Math.abs(a.moves.length - len);
-            const diffB = Math.abs(b.moves.length - len);
-            if (diffA !== diffB) return diffA - diffB;
-            return a.moves.length - b.moves.length;
+        // Prioritize:
+        // 1. Exact length match (diff === 0)
+        // 2. In progress lines: smallest diff (closest to current move)
+        // 3. Past book lines: largest matchLen (deepest book knowledge matched)
+        candidateMatches.sort((a, b) => {
+            if (a.diff === 0 && b.diff !== 0) return -1;
+            if (b.diff === 0 && a.diff !== 0) return 1;
+
+            if (a.type === 'in_progress' && b.type === 'in_progress') {
+                return a.diff - b.diff;
+            }
+            if (a.type === 'past_book' && b.type === 'past_book') {
+                return b.matchLen - a.matchLen;
+            }
+            if (a.type === 'in_progress') return -1;
+            return 1;
         });
 
-        const bestMatch = matchingOpenings[0];
+        const bestMatch = candidateMatches[0].opening;
 
         return {
             isTheory: true,

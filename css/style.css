@@ -1565,3 +1565,502 @@ main {
     0% { transform: scale(0.85); opacity: 0; }
     100% { transform: scale(1); opacity: 1; }
 }
+
+/* ==========================================================================
+   PRACTICE MODE: OPENINGS SUBFILTERS, STEPPERS & LITERATURE STYLES
+   ========================================================================== */
+
+/* Subfilter Bar for White / Black Openings */
+.practice-openings-filter-bar {
+    display: flex;
+    gap: 0.35rem;
+    margin-bottom: 0.55rem;
+    padding: 0.2rem;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+}
+
+.practice-subpill {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.35rem 0.4rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.practice-subpill:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.practice-subpill.active {
+    background: rgba(16, 185, 129, 0.18);
+    color: var(--accent-emerald);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+}
+
+/* Dedicated Opening Panel Container */
+.practice-opening-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    animation: fadeIn 0.25s ease;
+}
+
+/* Opening Panel Header */
+.opening-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.2rem;
+}
+
+.btn-outline-op {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--border-glass);
+    color: var(--text-secondary);
+    padding: 0.25rem 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.btn-outline-op:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.opening-side-badge {
+    font-size: 0.68rem;
+    font-weight: 800;
+    padding: 0.2rem 0.5rem;
+    border-radius: 12px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+}
+
+.opening-side-badge.white {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.opening-side-badge.black {
+    background: rgba(139, 92, 246, 0.15);
+    color: #a78bfa;
+    border: 1px solid rgba(139, 92, 246, 0.4);
+}
+
+/* Title & ECO Meta */
+.opening-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.45rem 0.6rem;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+}
+
+.opening-header-icon {
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+
+.opening-header-meta {
+    flex: 1;
+    min-width: 0;
+}
+
+.opening-header-name {
+    font-size: 0.92rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.opening-header-eco {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+/* Common Card Header */
+.opening-card-section-title {
+    font-size: 0.74rem;
+    font-weight: 800;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Stepper Card */
+.opening-stepper-card {
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+    padding: 0.55rem;
+}
+
+.opening-move-counter {
+    font-size: 0.68rem;
+    color: var(--accent-emerald);
+    font-weight: 700;
+}
+
+.opening-stepper-btns {
+    display: grid;
+    grid-template-columns: 36px 1fr 1fr 36px 54px 34px;
+    gap: 0.3rem;
+    margin-bottom: 0.45rem;
+}
+
+.btn-stepper {
+    padding: 0.35rem 0.2rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-align: center;
+    border-radius: 4px;
+    background: rgba(30, 41, 59, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.btn-stepper:hover:not(:disabled) {
+    background: rgba(51, 65, 85, 0.9);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.btn-stepper:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.btn-stepper.btn-primary {
+    background: var(--accent-emerald);
+    color: #022c22;
+    border-color: #10b981;
+}
+
+.btn-stepper.btn-primary:hover:not(:disabled) {
+    background: #059669;
+    color: #fff;
+}
+
+.btn-stepper.active {
+    background: #059669;
+    color: #fff;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+}
+
+/* Moves Strip (Clickable SAN chips) */
+.opening-moves-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    max-height: 80px;
+    overflow-y: auto;
+    padding: 0.35rem 0.25rem;
+    background: rgba(10, 15, 29, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    margin-bottom: 0.45rem;
+    scrollbar-width: thin;
+}
+
+.opening-moves-strip::-webkit-scrollbar { width: 4px; }
+.opening-moves-strip::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+.opening-move-chip {
+    padding: 0.15rem 0.35rem;
+    font-size: 0.7rem;
+    font-family: monospace;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.opening-move-chip:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary);
+}
+
+.opening-move-chip.active {
+    background: rgba(16, 185, 129, 0.22);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.45);
+    font-weight: 800;
+    box-shadow: 0 0 6px rgba(16, 185, 129, 0.25);
+}
+
+.opening-move-chip.future {
+    opacity: 0.5;
+}
+
+/* Move Explanation Callout */
+.opening-current-move-box {
+    background: rgba(30, 41, 59, 0.5);
+    border-left: 3px solid var(--accent-emerald);
+    padding: 0.45rem 0.55rem;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.opening-move-box-badge {
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--accent-emerald);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-bottom: 0.2rem;
+}
+
+.opening-move-box-text {
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+}
+
+/* Hand-Play & Opponent Responses Card */
+.opening-handplay-card {
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+    padding: 0.55rem;
+}
+
+.toggle-auto-reply {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-weight: 600;
+    text-transform: none;
+}
+
+.toggle-auto-reply input {
+    cursor: pointer;
+    accent-color: var(--accent-emerald);
+}
+
+.opening-handplay-hint {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    line-height: 1.35;
+    margin-bottom: 0.45rem;
+}
+
+.opening-handplay-hint strong {
+    color: var(--text-secondary);
+}
+
+.opponent-chips-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+}
+
+.opening-opponent-chips-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-bottom: 0.45rem;
+}
+
+.opponent-chip {
+    padding: 0.22rem 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    font-family: monospace;
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    color: #93c5fd;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.opponent-chip:hover {
+    background: rgba(59, 130, 246, 0.25);
+    border-color: #60a5fa;
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+/* Theory Feedback Banner */
+.opening-theory-feedback {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.6rem;
+    margin-top: 0.4rem;
+    animation: fadeIn 0.2s ease;
+}
+
+.opening-theory-status {
+    font-size: 0.74rem;
+    font-weight: 800;
+    color: #34d399;
+    margin-bottom: 0.2rem;
+}
+
+.opening-theory-desc {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.btn-secondary-op {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid var(--border-glass);
+    color: var(--text-primary);
+    padding: 0.4rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.btn-secondary-op:hover {
+    background: rgba(51, 65, 85, 0.9);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Literature & Strategic Masterclass Card (Requirement 2) */
+.opening-literature-card {
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+    padding: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.literature-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.76rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    padding-bottom: 0.35rem;
+}
+
+.literature-badge {
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 0.15rem 0.4rem;
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+/* Scrollable Literature Container */
+.opening-literature-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    max-height: 380px;
+    overflow-y: auto;
+    padding-right: 0.3rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(16, 185, 129, 0.3) transparent;
+}
+
+.opening-literature-content::-webkit-scrollbar {
+    width: 5px;
+}
+
+.opening-literature-content::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: 3px;
+}
+
+.opening-literature-content::-webkit-scrollbar-thumb {
+    background: rgba(16, 185, 129, 0.35);
+    border-radius: 3px;
+}
+
+.opening-literature-content::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-emerald);
+}
+
+/* Literature Sections */
+.literature-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.literature-heading {
+    font-size: 0.73rem;
+    font-weight: 800;
+    color: #38bdf8;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.literature-sources-tag {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-bottom: 0.2rem;
+}
+
+.literature-text {
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+    line-height: 1.52;
+}
+
+.literature-quote {
+    background: rgba(245, 158, 11, 0.08);
+    border-left: 3px solid #f59e0b;
+    padding: 0.45rem 0.55rem;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 0.73rem;
+    color: #fde68a;
+    font-style: italic;
+    line-height: 1.45;
+    margin: 0.2rem 0;
+}
+
+.literature-quote-author {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: #fbbf24;
+    text-align: right;
+    margin-top: 0.2rem;
+    font-style: normal;
+}

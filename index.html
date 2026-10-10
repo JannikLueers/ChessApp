@@ -298,12 +298,117 @@
                     <button class="practice-pill" data-category="pawns">🔲 Pawn Structures</button>
                 </div>
 
+                <!-- Openings White/Black Subfilter Bar (Visible when Openings category is active) -->
+                <div id="practice-openings-filter-bar" class="practice-openings-filter-bar" style="display: none;">
+                    <button class="practice-subpill active" data-subfilter="all">All Openings (<span id="count-all-openings">22</span>)</button>
+                    <button class="practice-subpill" data-subfilter="w">♔ White (<span id="count-white-openings">10</span>)</button>
+                    <button class="practice-subpill" data-subfilter="b">♚ Black (<span id="count-black-openings">12</span>)</button>
+                </div>
+
                 <!-- Scenario List (scrollable) -->
                 <div id="practice-scenario-list" class="practice-scenario-list">
                     <!-- Scenario cards rendered by JS -->
                 </div>
 
-                <!-- Active Scenario Detail (hidden until a scenario is selected) -->
+                <!-- Dedicated Opening Interactive Repertoire & Literature Panel -->
+                <div id="practice-opening-panel" class="practice-opening-panel" style="display: none;">
+                    
+                    <!-- Header with Back Button & Orientation Badge -->
+                    <div class="opening-panel-header">
+                        <button id="btn-op-back-to-list" class="btn btn-sm btn-outline-op">← Back to Openings</button>
+                        <span id="opening-side-badge" class="opening-side-badge">♔ White Opening</span>
+                    </div>
+
+                    <!-- Title & ECO Row -->
+                    <div class="opening-title-row">
+                        <span id="opening-header-icon" class="opening-header-icon">🏛️</span>
+                        <div class="opening-header-meta">
+                            <div id="opening-header-name" class="opening-header-name">The London System</div>
+                            <div id="opening-header-eco" class="opening-header-eco">ECO: D02 • Queen's Pawn</div>
+                        </div>
+                    </div>
+
+                    <!-- Stepper & Playable Navigation Controls (Requirement 3) -->
+                    <div class="opening-stepper-card">
+                        <div class="opening-card-section-title">
+                            <span>Step Through Moves</span>
+                            <span id="opening-move-counter" class="opening-move-counter">Move 0 / 13</span>
+                        </div>
+                        
+                        <div class="opening-stepper-btns">
+                            <button id="btn-op-first" class="btn btn-stepper" title="Jump to Starting Position">|◀</button>
+                            <button id="btn-op-prev" class="btn btn-stepper" title="Previous Move (Step Back)">◀ Prev</button>
+                            <button id="btn-op-next" class="btn btn-stepper btn-primary" title="Next Move (Step Forward)">Next ▶</button>
+                            <button id="btn-op-last" class="btn btn-stepper" title="Jump to End of Opening">▶|</button>
+                            <button id="btn-op-autoplay" class="btn btn-stepper" title="Auto-Play Opening Line">▶ Auto</button>
+                            <button id="btn-op-reset" class="btn btn-stepper" title="Reset to Start">🔄</button>
+                        </div>
+
+                        <!-- Clickable Move Strip (SAN tags) -->
+                        <div id="opening-moves-strip" class="opening-moves-strip">
+                            <!-- Populated dynamically: [1. d4] [1... d5] [2. Bf4] ... -->
+                        </div>
+
+                        <!-- Current Move Explanation Callout -->
+                        <div id="opening-current-move-box" class="opening-current-move-box">
+                            <div class="opening-move-box-badge" id="opening-move-box-badge">START POSITION</div>
+                            <div class="opening-move-box-text" id="opening-move-box-text">Explore the opening by clicking Next or playing moves on the board.</div>
+                        </div>
+                    </div>
+
+                    <!-- Hand-Play & Opponent Responses Section (Requirement 4) -->
+                    <div class="opening-handplay-card">
+                        <div class="opening-card-section-title">
+                            <span>✋ Play by Hand & Opponent Answers</span>
+                            <label class="toggle-auto-reply" title="Automatically execute theoretical reply after opponent move">
+                                <input type="checkbox" id="chk-op-auto-reply" checked>
+                                <span>Auto-Reply</span>
+                            </label>
+                        </div>
+                        
+                        <p class="opening-handplay-hint">
+                            You can play <strong>both sides</strong> on the board. Test the opponent moves you face most often to see how opening theory responds!
+                        </p>
+
+                        <!-- Common Opponent Response Quick Chips -->
+                        <div id="opening-opponent-chips-section">
+                            <div class="opponent-chips-label">Common Opponent Moves to Test:</div>
+                            <div id="opening-opponent-chips-container" class="opening-opponent-chips-container">
+                                <!-- Dynamically populated: e.g. [1... d5] [1... c5] [1... Nf6] -->
+                            </div>
+                        </div>
+
+                        <!-- Theory Feedback Banner (shown when opponent move is played) -->
+                        <div id="opening-theory-feedback" class="opening-theory-feedback" style="display: none;">
+                            <div id="opening-theory-status" class="opening-theory-status"></div>
+                            <div id="opening-theory-desc" class="opening-theory-desc"></div>
+                            <button id="btn-op-play-theory-move" class="btn btn-sm btn-primary" style="display: none; width: 100%; margin-top: 0.35rem;">
+                                ▶ Play Theory Response: <span id="op-theory-move-name"></span>
+                            </button>
+                        </div>
+
+                        <!-- Play vs Stockfish Bot from Current Position -->
+                        <div class="opening-bot-play-row" style="margin-top: 0.6rem;">
+                            <button id="btn-op-play-bot" class="btn btn-secondary-op" style="width: 100%;">
+                                🤖 Practice vs Stockfish from Current Position
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Established Literature & Strategy Masterclass (Requirement 2 - Scrollable on right) -->
+                    <div class="opening-literature-card">
+                        <div class="literature-card-header">
+                            <span>📚 Established Literature & Strategy</span>
+                            <span class="literature-badge">Master Guide</span>
+                        </div>
+
+                        <div id="opening-literature-content" class="opening-literature-content">
+                            <!-- Populated dynamically with rich Literature text -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active Scenario Detail (for Endgames, Middlegames, Pawns) -->
                 <div id="practice-detail-panel" style="display: none;">
                     <div class="practice-detail-name" id="practice-detail-name"></div>
                     <div class="practice-detail-goal" id="practice-detail-goal"></div>
