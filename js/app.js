@@ -283,6 +283,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (practiceOpeningPanel) practiceOpeningPanel.style.display = 'none';
         if (practiceDetailPanel) practiceDetailPanel.style.display = 'none';
         if (practiceIngameControls) practiceIngameControls.style.display = 'none';
+        const practiceCategoryPills = document.getElementById('practice-category-pills');
+        if (practiceCategoryPills) practiceCategoryPills.style.display = 'flex';
+        const practiceScenarioCount = document.getElementById('practice-scenario-count');
+        if (practiceScenarioCount) practiceScenarioCount.style.display = 'inline';
         if (practiceScenarioList) practiceScenarioList.style.display = 'flex';
         if (practiceCurrentCategory === 'openings') {
             if (practiceOpeningsFilterBar) practiceOpeningsFilterBar.style.display = 'flex';
@@ -2511,6 +2515,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (practiceOpeningPanel) practiceOpeningPanel.style.display = 'none';
             practiceIngameControls.style.display = 'none';
             practiceScenarioList.style.display = 'flex';
+            const practiceScenarioCount = document.getElementById('practice-scenario-count');
+            if (practiceScenarioCount) practiceScenarioCount.style.display = 'inline';
 
             if (practiceCurrentCategory === 'openings') {
                 if (practiceOpeningsFilterBar) practiceOpeningsFilterBar.style.display = 'flex';
@@ -2646,7 +2652,13 @@ document.addEventListener('DOMContentLoaded', () => {
         openingHistoryMoves = [];
         openingMainLine = s.moves || [];
 
-        // UI transitions
+        // UI transitions: Hide category selection pills and subfilter bar under Practice Mode heading
+        const practiceCategoryPills = document.getElementById('practice-category-pills');
+        if (practiceCategoryPills) practiceCategoryPills.style.display = 'none';
+        if (practiceOpeningsFilterBar) practiceOpeningsFilterBar.style.display = 'none';
+        const practiceScenarioCount = document.getElementById('practice-scenario-count');
+        if (practiceScenarioCount) practiceScenarioCount.style.display = 'none';
+
         practiceScenarioList.style.display = 'none';
         practiceDetailPanel.style.display = 'none';
         practiceIngameControls.style.display = 'none';
@@ -2704,22 +2716,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Move explanation callout
         if (openingMoveIndex === 0) {
-            if (openingMoveBoxBadge) openingMoveBoxBadge.textContent = 'STARTING POSITION';
-            if (openingMoveBoxText)  openingMoveBoxText.textContent = activeOpeningScenario.goal + ' Click Next ▶ or make moves on the board by hand to start training.';
+            if (openingMoveBoxBadge) {
+                openingMoveBoxBadge.innerHTML = '🏁 <span>STARTING POSITION</span>';
+            }
+            if (openingMoveBoxText) {
+                openingMoveBoxText.textContent = `${activeOpeningScenario.goal}. Click Next ▶ or play moves directly on the board to study opening theory.`;
+            }
         } else {
-            const currentMoveNote = (activeOpeningScenario.moveExplanations && activeOpeningScenario.moveExplanations[openingMoveIndex - 1]) 
-                ? activeOpeningScenario.moveExplanations[openingMoveIndex - 1]
-                : (lastMoveObj ? `Move ${openingMoveIndex}: ${lastMoveObj.san}` : '');
-
             const moveNum = Math.ceil(openingMoveIndex / 2);
             const isWhiteTurnInGame = (openingMoveIndex % 2 === 1);
             const movePrefix = isWhiteTurnInGame ? `${moveNum}. ` : `${moveNum}... `;
+            const moveSan = lastMoveObj ? lastMoveObj.san : (openingMainLine[openingMoveIndex - 1] || '');
+            const isPlayerTurn = (lastMoveObj && lastMoveObj.color) 
+                ? (lastMoveObj.color === activeOpeningScenario.side)
+                : ((isWhiteTurnInGame && activeOpeningScenario.side === 'w') || (!isWhiteTurnInGame && activeOpeningScenario.side === 'b'));
+
+            const isMainLine = (openingMainLine[openingMoveIndex - 1] === moveSan);
+
+            let statusTag = isMainLine 
+                ? (isPlayerTurn ? 'MAIN LINE' : 'OPPONENT REPLY')
+                : 'ALTERNATIVE MOVE';
+
+            let iconTag = isMainLine ? (isPlayerTurn ? '✅' : '♟') : '💡';
 
             if (openingMoveBoxBadge) {
-                openingMoveBoxBadge.textContent = `MOVE ${openingMoveIndex}: ${movePrefix}${lastMoveObj ? lastMoveObj.san : (openingMainLine[openingMoveIndex - 1] || '')}`;
+                openingMoveBoxBadge.innerHTML = `${iconTag} <span>MOVE ${openingMoveIndex} (${movePrefix}${moveSan}) • ${statusTag}</span>`;
             }
+
+            let currentMoveNote = '';
+            if (isMainLine && activeOpeningScenario.moveExplanations && activeOpeningScenario.moveExplanations[openingMoveIndex - 1]) {
+                currentMoveNote = activeOpeningScenario.moveExplanations[openingMoveIndex - 1];
+            } else if (!isMainLine) {
+                currentMoveNote = `Alternative continuation: ${moveSan}. Main theory in ${activeOpeningScenario.name} continues with ${openingMainLine[openingMoveIndex - 1] || 'standard lines'}.`;
+            } else {
+                currentMoveNote = `Position reached after ${movePrefix}${moveSan}. Continue exploring theoretical responses.`;
+            }
+
             if (openingMoveBoxText) {
-                openingMoveBoxText.textContent = currentMoveNote || `Position reached after ${lastMoveObj ? lastMoveObj.san : ''}. Continue exploring theoretical responses.`;
+                openingMoveBoxText.textContent = currentMoveNote;
             }
         }
     }
@@ -3123,11 +3157,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!activeOpeningScenario) return;
         if (openingTheoryFeedback) openingTheoryFeedback.style.display = 'none';
 
+        const moveNum = Math.ceil(openingMoveIndex / 2);
+        const isWhiteTurnInGame = (openingMoveIndex % 2 === 1);
+        const movePrefix = isWhiteTurnInGame ? `${moveNum}. ` : `${moveNum}... `;
         const mainLineMove = openingMainLine[openingMoveIndex - 1];
+
         if (mainLineMove === moveObj.san) {
-            if (openingMoveBoxBadge) openingMoveBoxBadge.textContent = `✅ MAIN LINE: Move ${openingMoveIndex} (${moveObj.san})`;
+            if (openingMoveBoxBadge) {
+                openingMoveBoxBadge.innerHTML = `✅ <span>MOVE ${openingMoveIndex} (${movePrefix}${moveObj.san}) • MAIN LINE</span>`;
+            }
         } else {
-            if (openingMoveBoxBadge) openingMoveBoxBadge.textContent = `💡 ALTERNATIVE: Move ${openingMoveIndex} (${moveObj.san})`;
+            if (openingMoveBoxBadge) {
+                openingMoveBoxBadge.innerHTML = `💡 <span>MOVE ${openingMoveIndex} (${movePrefix}${moveObj.san}) • ALTERNATIVE VARIATION</span>`;
+            }
+            if (openingMoveBoxText) {
+                openingMoveBoxText.textContent = `Alternative move played: ${moveObj.san}. The standard theoretical main line is ${mainLineMove || 'different'}.`;
+            }
         }
     }
 
@@ -3143,12 +3188,25 @@ document.addEventListener('DOMContentLoaded', () => {
         btnOpBackToList.addEventListener('click', () => {
             stopOpeningAutoPlay();
             isOpeningPracticeActive = false;
+            activeOpeningScenario = null;
             if (practiceOpeningPanel) practiceOpeningPanel.style.display = 'none';
+
+            // Restore selection under Practice Mode heading
+            const practiceCategoryPills = document.getElementById('practice-category-pills');
+            if (practiceCategoryPills) practiceCategoryPills.style.display = 'flex';
+            if (practiceCurrentCategory === 'openings' && practiceOpeningsFilterBar) {
+                practiceOpeningsFilterBar.style.display = 'flex';
+            }
+            const practiceScenarioCount = document.getElementById('practice-scenario-count');
+            if (practiceScenarioCount) practiceScenarioCount.style.display = 'inline';
+
             practiceScenarioList.style.display = 'flex';
             boardRenderer.clearArrows();
             boardRenderer.clearHighlights();
             chess.reset();
+            setBoardOrientation(false);
             updateUI();
+            renderPracticeScenarioList(practiceCurrentCategory);
         });
     }
 
