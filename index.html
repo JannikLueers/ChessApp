@@ -10,7 +10,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <link rel="stylesheet" href="css/style.css?v=2.2">
+    <link rel="stylesheet" href="css/style.css?v=2.3">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -331,6 +331,17 @@
                         </div>
                     </div>
 
+                    <!-- Variations & Counter-Lines Selector Bar -->
+                    <div id="opening-variations-bar" class="opening-variations-bar">
+                        <div class="opening-variations-header">
+                            <span class="opening-variations-label">⚡ Variations & Counter-Lines</span>
+                            <span id="opening-variation-count-badge" class="opening-variation-count-badge"></span>
+                        </div>
+                        <div id="opening-variations-list" class="opening-variations-list">
+                            <!-- Populated dynamically: [⭐ Main Line] [⚔️ Steinitz Counter] ... -->
+                        </div>
+                    </div>
+
                     <!-- Stepper & Playable Navigation Controls (Requirement 3) -->
                     <div class="opening-stepper-card">
                         <div class="opening-card-section-title">
@@ -351,6 +362,17 @@
                         <div id="opening-current-move-box" class="opening-current-move-box">
                             <div class="opening-move-box-badge" id="opening-move-box-badge">🏁 <span>STARTING POSITION</span></div>
                             <div class="opening-move-box-text" id="opening-move-box-text">Explore the opening by clicking Next or playing moves on the board.</div>
+                        </div>
+
+                        <!-- Interactive Opponent Counter-Play Decision Point -->
+                        <div id="opening-decision-box" class="opening-decision-box" style="display: none;">
+                            <div class="opening-decision-header">
+                                <span class="decision-header-title">⚡ Opponent Counter-Lines at this Turn</span>
+                                <span class="decision-header-hint">Click defense or play on board</span>
+                            </div>
+                            <div id="opening-decision-cards" class="opening-decision-cards">
+                                <!-- Interactive option cards populated dynamically -->
+                            </div>
                         </div>
 
                         <!-- Clickable Move Strip (SAN tags) -->
@@ -595,14 +617,14 @@
     <!-- Scripts -->
     <script src="js/chess.min.js"></script>
     <script src="js/stockfishEngine.js"></script>
-    <script src="js/openings.js?v=2.2"></script>
-    <script src="js/pieces.js?v=2.2"></script>
-    <script src="js/boardRenderer.js?v=2.2"></script>
-    <script src="js/pgnParser.js?v=2.2"></script>
-    <script src="js/puzzles.js?v=2.2"></script>
-    <script src="js/audio.js?v=2.2"></script>
-    <script src="js/practice.js?v=2.2"></script>
-    <script src="js/app.js?v=2.2"></script>
+    <script src="js/openings.js?v=2.3"></script>
+    <script src="js/pieces.js?v=2.3"></script>
+    <script src="js/boardRenderer.js?v=2.3"></script>
+    <script src="js/pgnParser.js?v=2.3"></script>
+    <script src="js/puzzles.js?v=2.3"></script>
+    <script src="js/audio.js?v=2.3"></script>
+    <script src="js/practice.js?v=2.3"></script>
+    <script src="js/app.js?v=2.3"></script>
 
 </body>
 </html>

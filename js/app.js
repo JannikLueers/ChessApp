@@ -95,6 +95,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let practiceOpeningsSubfilter = 'all'; // 'all', 'w', or 'b'
     let isOpeningPracticeActive = false;
     let activeOpeningScenario = null;
+    let activeOpeningVariation = null;
+    let activeOpeningVariationsList = [];
     let openingMoveIndex = 0;
     let openingHistoryMoves = [];
     let openingMainLine = [];
@@ -2533,6 +2535,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const openingHeaderIcon         = document.getElementById('opening-header-icon');
     const openingHeaderName         = document.getElementById('opening-header-name');
     const openingHeaderEco          = document.getElementById('opening-header-eco');
+    const openingVariationsBar      = document.getElementById('opening-variations-bar');
+    const openingVariationsList     = document.getElementById('opening-variations-list');
+    const openingVariationCountBadge = document.getElementById('opening-variation-count-badge');
 
     const openingMoveCounter        = document.getElementById('opening-move-counter');
     const btnOpFirst                = document.getElementById('btn-op-first');
@@ -2544,6 +2549,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const openingMovesStrip         = document.getElementById('opening-moves-strip');
     const openingMoveBoxBadge       = document.getElementById('opening-move-box-badge');
     const openingMoveBoxText        = document.getElementById('opening-move-box-text');
+
+    const openingDecisionBox        = document.getElementById('opening-decision-box');
+    const openingDecisionCards      = document.getElementById('opening-decision-cards');
 
     const chkOpAutoReply            = document.getElementById('chk-op-auto-reply');
     const openingOpponentChipsContainer = document.getElementById('opening-opponent-chips-container');
@@ -2702,7 +2710,13 @@ document.addEventListener('DOMContentLoaded', () => {
         activeOpeningScenario = s;
         openingMoveIndex = 0;
         openingHistoryMoves = [];
-        openingMainLine = s.moves || [];
+
+        // Load all available variations & counter-lines for this scenario
+        activeOpeningVariationsList = practiceManager.getVariationsForScenario(s);
+        activeOpeningVariation = (activeOpeningVariationsList && activeOpeningVariationsList.length > 0)
+            ? activeOpeningVariationsList[0]
+            : null;
+        openingMainLine = activeOpeningVariation ? activeOpeningVariation.moves : (s.moves || []);
 
         // UI transitions: Hide category selection pills and subfilter bar under Practice Mode heading
         const practiceCategoryPills = document.getElementById('practice-category-pills');
@@ -2723,6 +2737,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Reset board
         chess.reset();
         boardRenderer.clearArrows();
+        boardRenderer.clearCandidateArrows();
         boardRenderer.clearHighlights();
         selectedSquare = null;
         updateUI();
@@ -2737,17 +2752,64 @@ document.addEventListener('DOMContentLoaded', () => {
             openingSideBadge.textContent = s.side === 'w' ? '♔ White Opening' : '♚ Black Defense';
         }
 
+        // Render variation selector pills
+        renderOpeningVariationsBar();
+
         // Stepper UI
         updateOpeningStepperUI(null);
 
         // Literature content
         renderOpeningLiterature(s);
 
-        // Common opponent chips for starting position
+        // Common opponent chips & opponent decision point for starting position
         updateOpponentChips();
+        updateOpeningDecisionBox();
 
         // Hide theory feedback initially
         if (openingTheoryFeedback) openingTheoryFeedback.style.display = 'none';
+    }
+
+    function renderOpeningVariationsBar() {
+        if (!openingVariationsList || !activeOpeningScenario) return;
+        openingVariationsList.innerHTML = '';
+
+        if (!activeOpeningVariationsList || activeOpeningVariationsList.length === 0) {
+            if (openingVariationsBar) openingVariationsBar.style.display = 'none';
+            return;
+        }
+
+        if (openingVariationsBar) openingVariationsBar.style.display = 'flex';
+        if (openingVariationCountBadge) {
+            openingVariationCountBadge.textContent = `${activeOpeningVariationsList.length} Lines`;
+        }
+
+        activeOpeningVariationsList.forEach((v, idx) => {
+            const pill = document.createElement('button');
+            const isActive = activeOpeningVariation ? (activeOpeningVariation.id === v.id) : (idx === 0);
+            pill.className = `variation-pill ${isActive ? 'active' : ''}`;
+            const icon = idx === 0 ? '⭐' : '⚔️';
+            pill.innerHTML = `<span>${icon}</span> <span>${v.name}</span>`;
+            pill.title = v.description || v.name;
+            pill.addEventListener('click', () => {
+                selectOpeningVariation(v.id);
+            });
+            openingVariationsList.appendChild(pill);
+        });
+    }
+
+    function selectOpeningVariation(varId) {
+        if (!activeOpeningScenario || !activeOpeningVariationsList) return;
+        const v = activeOpeningVariationsList.find(x => x.id === varId);
+        if (!v) return;
+
+        activeOpeningVariation = v;
+        openingMainLine = v.moves || [];
+        renderOpeningVariationsBar();
+        resetOpeningToStart();
+
+        if (v.description && openingMoveBoxText) {
+            openingMoveBoxText.textContent = `${v.description} Step through moves or play counter answers on the board.`;
+        }
     }
 
     function updateOpeningStepperUI(lastMoveObj) {
@@ -2973,6 +3035,198 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function updateOpeningDecisionBox() {
+        if (!openingDecisionBox || !activeOpeningScenario || !isOpeningPracticeActive) {
+            if (openingDecisionBox) openingDecisionBox.style.display = 'none';
+            if (boardRenderer) boardRenderer.clearCandidateArrows();
+            return;
+        }
+
+        const currentTurn = chess.turn();
+        const isOpponentTurn = (currentTurn !== activeOpeningScenario.side);
+
+        if (!isOpponentTurn) {
+            openingDecisionBox.style.display = 'none';
+            if (boardRenderer) boardRenderer.clearCandidateArrows();
+            return;
+        }
+
+        const historySans = chess.history();
+        const historyKey = historySans.join(' ');
+        const candidateMap = new Map();
+
+        // 1. Check activeOpeningScenario.branches
+        if (activeOpeningScenario.branches) {
+            let branchList = [];
+            if (activeOpeningScenario.branches[historyKey]) {
+                branchList = activeOpeningScenario.branches[historyKey];
+            } else {
+                for (const key of Object.keys(activeOpeningScenario.branches)) {
+                    if (key === historyKey || (historyKey === '' && key === 'd4' && activeOpeningScenario.side === 'w' && currentTurn === 'b')) {
+                        branchList = activeOpeningScenario.branches[key];
+                        break;
+                    }
+                }
+            }
+            branchList.forEach(b => {
+                candidateMap.set(b.opponentMove, {
+                    opponentMove: b.opponentMove,
+                    name: b.name || `Defense (${b.opponentMove})`,
+                    note: b.note || '',
+                    theoryResponse: b.theoryResponse || null,
+                    isMainLine: false,
+                    variationId: null
+                });
+            });
+        }
+
+        // 2. Check activeOpeningVariationsList
+        if (activeOpeningVariationsList && activeOpeningVariationsList.length > 0) {
+            activeOpeningVariationsList.forEach(v => {
+                if (!v.moves || v.moves.length <= historySans.length) return;
+                const matchesPrefix = historySans.every((m, idx) => v.moves[idx] === m);
+                if (matchesPrefix) {
+                    const nextSan = v.moves[historySans.length];
+                    const replySan = v.moves[historySans.length + 1] || null;
+                    const isMain = (v.id === 'main' || v === activeOpeningVariationsList[0]);
+                    const existing = candidateMap.get(nextSan);
+                    if (!existing) {
+                        candidateMap.set(nextSan, {
+                            opponentMove: nextSan,
+                            name: v.name,
+                            note: v.description || '',
+                            theoryResponse: replySan,
+                            isMainLine: isMain,
+                            variationId: v.id
+                        });
+                    } else {
+                        existing.variationId = v.id;
+                        if (isMain) existing.isMainLine = true;
+                        if (!existing.note && v.description) existing.note = v.description;
+                        if (!existing.theoryResponse && replySan) existing.theoryResponse = replySan;
+                    }
+                }
+            });
+        }
+
+        // 3. Check current openingMainLine
+        if (openingMoveIndex < openingMainLine.length) {
+            const nextMainSan = openingMainLine[openingMoveIndex];
+            const existing = candidateMap.get(nextMainSan);
+            if (existing) {
+                existing.isMainLine = true;
+            } else {
+                candidateMap.set(nextMainSan, {
+                    opponentMove: nextMainSan,
+                    name: 'Main Line Continuation',
+                    note: 'Theoretical mainline continuation.',
+                    theoryResponse: openingMainLine[openingMoveIndex + 1] || null,
+                    isMainLine: true,
+                    variationId: null
+                });
+            }
+        }
+
+        // Filter to legal moves only and match squares
+        const legalVerboseMoves = chess.moves({ verbose: true });
+        const candidates = [];
+
+        candidateMap.forEach((cand) => {
+            const legal = legalVerboseMoves.find(m => m.san === cand.opponentMove);
+            if (legal) {
+                cand.from = legal.from;
+                cand.to = legal.to;
+                candidates.push(cand);
+            }
+        });
+
+        if (candidates.length === 0) {
+            openingDecisionBox.style.display = 'none';
+            if (boardRenderer) boardRenderer.clearCandidateArrows();
+            return;
+        }
+
+        // Sort: Main line first, then other variations
+        candidates.sort((a, b) => (b.isMainLine ? 1 : 0) - (a.isMainLine ? 1 : 0));
+
+        // Color palette for arrows and cards
+        const ARROW_COLORS = ['#10b981', '#0ea5e9', '#f59e0b', '#a855f7', '#ec4899', '#06b6d4'];
+        const arrows = candidates.map((cand, idx) => {
+            const color = cand.isMainLine ? '#10b981' : (ARROW_COLORS[(idx % (ARROW_COLORS.length - 1)) + 1] || '#0ea5e9');
+            cand.color = color;
+            return {
+                fromSq: cand.from,
+                toSq: cand.to,
+                color: color,
+                width: cand.isMainLine ? 11 : 9
+            };
+        });
+
+        boardRenderer.setCandidateArrows(arrows);
+
+        openingDecisionBox.style.display = 'block';
+        if (openingDecisionCards) {
+            openingDecisionCards.innerHTML = '';
+            candidates.forEach(cand => {
+                const card = document.createElement('div');
+                card.className = `decision-card ${cand.isMainLine ? 'active-choice' : ''}`;
+
+                const replyHtml = cand.theoryResponse 
+                    ? `<div class="decision-card-reply"><span>🎯 Theory Reply:</span> <strong>${cand.theoryResponse}</strong></div>`
+                    : '';
+
+                card.innerHTML = `
+                    <div class="decision-card-top">
+                        <div class="decision-card-badge-group">
+                            <span class="decision-card-color-dot" style="background: ${cand.color}; box-shadow: 0 0 6px ${cand.color}88;"></span>
+                            <span class="decision-card-san">${cand.opponentMove}</span>
+                            <span class="decision-card-name" title="${cand.name}">${cand.name}</span>
+                        </div>
+                        <span class="decision-card-action">Play Line ▶</span>
+                    </div>
+                    ${cand.note ? `<div class="decision-card-note">${cand.note}</div>` : ''}
+                    ${replyHtml}
+                `;
+
+                card.addEventListener('click', () => {
+                    playOpponentCandidateChoice(cand);
+                });
+
+                card.addEventListener('mouseenter', () => {
+                    const hoverArrows = arrows.map(a => ({
+                        ...a,
+                        width: (a.fromSq === cand.from && a.toSq === cand.to) ? 14 : 7,
+                        color: (a.fromSq === cand.from && a.toSq === cand.to) ? a.color : 'rgba(148, 163, 184, 0.35)'
+                    }));
+                    boardRenderer.setCandidateArrows(hoverArrows);
+                });
+
+                card.addEventListener('mouseleave', () => {
+                    boardRenderer.setCandidateArrows(arrows);
+                });
+
+                openingDecisionCards.appendChild(card);
+            });
+        }
+    }
+
+    function playOpponentCandidateChoice(cand) {
+        if (!isOpeningPracticeActive || !activeOpeningScenario) return;
+
+        // If candidate matches an alternative variation, switch active variation to it
+        if (cand.variationId && activeOpeningVariation && activeOpeningVariation.id !== cand.variationId) {
+            const targetVar = activeOpeningVariationsList.find(x => x.id === cand.variationId);
+            if (targetVar) {
+                activeOpeningVariation = targetVar;
+                openingMainLine = targetVar.moves || [];
+                renderOpeningVariationsBar();
+            }
+        }
+
+        // Execute the opponent's counter move on the board
+        executeOpeningHandSanMove(cand.opponentMove);
+    }
+
     function stepOpeningForward() {
         if (!isOpeningPracticeActive || !activeOpeningScenario) return;
         if (openingMoveIndex >= openingMainLine.length) {
@@ -3029,6 +3283,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             updateOpeningStepperUI(null);
             updateOpponentChips();
+            updateOpeningDecisionBox();
             if (openingTheoryFeedback) openingTheoryFeedback.style.display = 'none';
         }
     }
@@ -3061,6 +3316,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             updateOpeningStepperUI(null);
             updateOpponentChips();
+            updateOpeningDecisionBox();
             if (openingTheoryFeedback) openingTheoryFeedback.style.display = 'none';
         }
     }
@@ -3196,6 +3452,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateOpeningStepperUI(moveObj);
         updateOpponentChips();
+        updateOpeningDecisionBox();
 
         const isPlayerColor = (moveObj.color === activeOpeningScenario.side);
 
@@ -3230,7 +3487,29 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // 2. Check general opening theory recognition
+        // 2. Check active variations
+        if (!matchedBranch && activeOpeningVariationsList && activeOpeningVariationsList.length > 0) {
+            for (const v of activeOpeningVariationsList) {
+                if (v.moves && v.moves.length >= historySans.length) {
+                    const matchesSoFar = historySans.every((m, idx) => v.moves[idx] === m);
+                    if (matchesSoFar) {
+                        matchedBranch = {
+                            name: v.name,
+                            note: v.description || '',
+                            theoryResponse: v.moves[historySans.length] || null
+                        };
+                        if (activeOpeningVariation && activeOpeningVariation.id !== v.id) {
+                            activeOpeningVariation = v;
+                            openingMainLine = v.moves;
+                            renderOpeningVariationsBar();
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 3. Check general opening theory recognition
         const theory = (typeof OpeningTheory !== 'undefined') ? OpeningTheory.getTheoryAtStep(historySans) : null;
 
         // Determine theoretical reply
@@ -3245,7 +3524,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (matchedBranch) {
             if (openingTheoryStatus) openingTheoryStatus.textContent = `🎯 Theory Response: ${matchedBranch.name} (${moveObj.san})`;
-            if (openingTheoryDesc)   openingTheoryDesc.textContent = matchedBranch.note + (theoryReply ? ` Theory recommends: ${theoryReply}.` : '');
+            if (openingTheoryDesc)   openingTheoryDesc.textContent = (matchedBranch.note ? matchedBranch.note + ' ' : '') + (theoryReply ? `Theory recommends: ${theoryReply}.` : '');
         } else if (theory) {
             if (openingTheoryStatus) openingTheoryStatus.textContent = `📘 Theory Recognized: ${theory.openingName} (${moveObj.san})`;
             if (openingTheoryDesc)   openingTheoryDesc.textContent = `Opponent played ${moveObj.san}. ${theoryReply ? `Standard theoretical response: ${theoryReply}.` : 'Continue with sound positional principles.'}`;
@@ -3311,6 +3590,8 @@ document.addEventListener('DOMContentLoaded', () => {
             stopOpeningAutoPlay();
             isOpeningPracticeActive = false;
             activeOpeningScenario = null;
+            activeOpeningVariation = null;
+            activeOpeningVariationsList = [];
             if (practiceOpeningPanel) practiceOpeningPanel.style.display = 'none';
 
             // Restore selection under Practice Mode heading
@@ -3324,6 +3605,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             practiceScenarioList.style.display = 'flex';
             boardRenderer.clearArrows();
+            boardRenderer.clearCandidateArrows();
             boardRenderer.clearHighlights();
             chess.reset();
             setBoardOrientation(false);
@@ -3337,6 +3619,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!activeOpeningScenario) return;
             stopOpeningAutoPlay();
             isOpeningPracticeActive = false;
+            boardRenderer.clearCandidateArrows();
 
             // Transition directly into bot practice session from current board position!
             practiceManager.currentScenario = activeOpeningScenario;
@@ -3348,7 +3631,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (practiceOpeningPanel) practiceOpeningPanel.style.display = 'none';
             practiceIngameControls.style.display = 'block';
             practiceResultBanner.style.display = 'none';
-            practiceIngameName.textContent = activeOpeningScenario.name;
+            const varSuffix = (activeOpeningVariation && activeOpeningVariation.id !== 'main') ? ` — ${activeOpeningVariation.name}` : '';
+            practiceIngameName.textContent = `${activeOpeningScenario.name}${varSuffix}`;
             const sideLabel = practicePlayerColor === 'w' ? 'Playing as White ♔' : 'Playing as Black ♚';
             practiceIngameSide.textContent = sideLabel;
             practiceHintsIngame.checked = practiceHintsChk.checked;

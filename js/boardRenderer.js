@@ -33,6 +33,7 @@ class BoardRenderer {
         this.userArrows = new Map();
         this.engineArrow = null;
         this.previewArrow = null;
+        this.candidateArrows = [];
 
         this.rightClickStartSq = null;
         this.isRightClickDragging = false;
@@ -525,6 +526,17 @@ class BoardRenderer {
 
     clearArrows() {
         this.engineArrow = null;
+        this.candidateArrows = [];
+        this.renderAllOverlayArrows();
+    }
+
+    setCandidateArrows(arrows = []) {
+        this.candidateArrows = Array.isArray(arrows) ? arrows : [];
+        this.renderAllOverlayArrows();
+    }
+
+    clearCandidateArrows() {
+        this.candidateArrows = [];
         this.renderAllOverlayArrows();
     }
 
@@ -543,12 +555,24 @@ class BoardRenderer {
             );
         }
 
-        // 2. Render user-drawn custom arrows
+        // 2. Render candidate / counter-play arrows (e.g. for openings practice)
+        if (this.candidateArrows && this.candidateArrows.length > 0) {
+            this.candidateArrows.forEach(arr => {
+                this.renderSingleArrow(
+                    arr.fromSq,
+                    arr.toSq,
+                    arr.color || '#0ea5e9',
+                    arr.width || 10
+                );
+            });
+        }
+
+        // 3. Render user-drawn custom arrows
         this.userArrows.forEach(arr => {
             this.renderSingleArrow(arr.fromSq, arr.toSq, arr.color || '#f59e0b', arr.width || 12);
         });
 
-        // 3. Render live preview drag arrow
+        // 4. Render live preview drag arrow
         if (this.previewArrow) {
             this.renderSingleArrow(
                 this.previewArrow.fromSq,

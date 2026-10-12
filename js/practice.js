@@ -108,6 +108,38 @@ const PRACTICE_SCENARIOS = [
         playAs: 'w',
         goal: 'Construct the harmonious c3-d4-e3 pyramid and outpost the knight on e5',
         tip: 'Develop the dark-squared bishop to f4 BEFORE playing e3! This solves the classical problem of the Queen\'s Pawn openings.',
+        variations: [
+            {
+                id: 'main',
+                name: 'Classical (1...d5)',
+                moves: ['d4', 'd5', 'Bf4', 'Nf6', 'e3', 'c5', 'c3', 'Nc6', 'Nd2', 'e6', 'Ngf3', 'Bd6', 'Bg3'],
+                description: 'The standard classical clash where Black responds 1...d5, and White erects the harmonious c3-d4-e3 pyramid.'
+            },
+            {
+                id: 'steinitz_c5',
+                name: 'Steinitz Counter (1...c5)',
+                moves: ['d4', 'c5', 'e3', 'Nf6', 'Nf3', 'd5', 'c3', 'Nc6', 'Bd3', 'Bg4', 'Nbd2', 'e6', 'O-O'],
+                description: 'Black strikes immediately on the flank with 1...c5. White reinforces the d4 center with e3 and c3, retaining solid central dominance.'
+            },
+            {
+                id: 'indian_nf6',
+                name: "Indian Setup (1...Nf6 & ...g6)",
+                moves: ['d4', 'Nf6', 'Bf4', 'g6', 'e3', 'Bg7', 'Nf3', 'O-O', 'Be2', 'd6', 'h3', 'Nbd7', 'O-O'],
+                description: 'Black adopts a flexible King\'s Indian kingside fianchetto. White proceeds with Bf4, e3, and h3 to preserve the bishop.'
+            },
+            {
+                id: 'immediate_c5_move2',
+                name: 'Immediate 2...c5 Challenge',
+                moves: ['d4', 'd5', 'Bf4', 'c5', 'e3', 'Nc6', 'c3', 'Qb6', 'Qb3', 'c4', 'Qc2', 'Nf6', 'Nd2'],
+                description: 'Black counter-attacks the d4 base immediately on move 2. White reinforces with e3 and c3, neutralizing ...Qb6 with Qb3 and Qc2.'
+            },
+            {
+                id: 'symmetrical_bf5',
+                name: 'Symmetrical 2...Bf5',
+                moves: ['d4', 'd5', 'Bf4', 'Bf5', 'e3', 'e6', 'c4', 'c6', 'Nc3', 'Nf6', 'Qb3', 'Qb6', 'c5'],
+                description: 'Black mirrors White\'s bishop sortie with 2...Bf5. White strikes back dynamically on the queenside with 4.c4 and 6.Qb3.'
+            }
+        ],
         literature: {
             bookTitle: 'The Agile London System & Classic Queen\'s Pawn Strategy',
             sources: 'Alfonso Romero Holmes & Oscar de Prado, Sverre Johnsen, Aaron Nimzowitsch (My System)',
@@ -173,6 +205,32 @@ const PRACTICE_SCENARIOS = [
         playAs: 'w',
         goal: 'Pressure f7, build central flexibility with c3/d3, and maneuver the knight to g3',
         tip: 'In the Giuoco Pianissimo, don\'t rush d4! Build slowly, tuck the bishop on b3, and route the b1-knight via d2-f1-g3.',
+        variations: [
+            {
+                id: 'main',
+                name: 'Giuoco Pianissimo (Main Line)',
+                moves: ['e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Bc5', 'c3', 'Nf6', 'd3', 'd6', 'O-O', 'a6', 'Bb3', 'Ba7'],
+                description: 'The harmonious modern master choice. White builds steadily with c3 and d3, rerouting the knight to g3.'
+            },
+            {
+                id: 'two_knights',
+                name: 'Two Knights Defense (3...Nf6)',
+                moves: ['e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Nf6', 'd3', 'Be7', 'O-O', 'O-O', 'Re1', 'd6', 'c3'],
+                description: 'Black immediately counter-attacks e4 with 3...Nf6. White continues solidly with 4.d3 and prepares kingside piece coordination.'
+            },
+            {
+                id: 'sharp_greco',
+                name: 'Sharp Greco Attack (4.c3 Nf6 5.d4)',
+                moves: ['e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Bc5', 'c3', 'Nf6', 'd4', 'exd4', 'cxd4', 'Bb4+', 'Bd2', 'Bxd2+', 'Nbxd2', 'd5'],
+                description: 'The classical attacking line! White storms the center with 5.d4, aiming for rapid tactical domination.'
+            },
+            {
+                id: 'hungarian',
+                name: 'Hungarian Defense (3...Be7)',
+                moves: ['e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Be7', 'd4', 'd6', 'd5', 'Nb8', 'Bd3', 'Nf6', 'c4'],
+                description: 'Black chooses a ultra-solid defensive shell with 3...Be7. White takes vast central space with 4.d4 and 5.d5.'
+            }
+        ],
         literature: {
             bookTitle: 'Understanding the Chess Openings & Master Italian Strategy',
             sources: 'John Nunn, Reuben Fine, Garry Kasparov (My Great Predecessors)',
@@ -224,6 +282,32 @@ const PRACTICE_SCENARIOS = [
         playAs: 'w',
         goal: 'Apply long-term pressure on Black\'s central e5 stronghold and conquer the center with c3/d4',
         tip: 'Don\'t take on c6 early unless you want the Exchange Variation! Preserve your bishop on b3 and play c3 to build the classic Spanish pawn roller.',
+        variations: [
+            {
+                id: 'main',
+                name: 'Morphy Defense (Main Line)',
+                moves: ['e4', 'e5', 'Nf3', 'Nc6', 'Bb5', 'a6', 'Ba4', 'Nf6', 'O-O', 'Be7', 'Re1', 'b5', 'Bb3', 'd6', 'c3', 'O-O', 'h3'],
+                description: 'The monumental classical main line. Black challenges the bishop with 3...a6 and establishes kingside safety.'
+            },
+            {
+                id: 'berlin',
+                name: 'Berlin Defense (3...Nf6)',
+                moves: ['e4', 'e5', 'Nf3', 'Nc6', 'Bb5', 'Nf6', 'O-O', 'Nxe4', 'd4', 'Nd6', 'Bxc6', 'dxc6', 'dxe5', 'Nf5', 'Qxd8+', 'Kxd8'],
+                description: 'The famous "Berlin Wall" popularized by Kramnik vs. Kasparov (2000). Highly resilient endgame structure.'
+            },
+            {
+                id: 'schliemann',
+                name: 'Schliemann / Jaenisch Gambit (3...f5)',
+                moves: ['e4', 'e5', 'Nf3', 'Nc6', 'Bb5', 'f5', 'Nc3', 'fxe4', 'Nxe4', 'd5', 'Nxe5', 'dxe4', 'Nxc6', 'Qg5'],
+                description: 'Ultra-aggressive counter-strike! Black lashes out immediately on the flank with 3...f5.'
+            },
+            {
+                id: 'classical_bc5',
+                name: 'Classical Defense (3...Bc5)',
+                moves: ['e4', 'e5', 'Nf3', 'Nc6', 'Bb5', 'Bc5', 'c3', 'Nf6', 'd4', 'exd4', 'e5', 'Ne4', 'O-O', 'd5', 'cxd4', 'Bb6'],
+                description: 'Black activates the dark-squared bishop directly on the a7-g1 diagonal before playing ...Nf6.'
+            }
+        ],
         literature: {
             bookTitle: 'The Ruy Lopez: The Classical Cornerstone of Chess',
             sources: 'Siegbert Tarrasch, Aaron Nimzowitsch, John Shaw (Quality Chess)',
@@ -275,6 +359,32 @@ const PRACTICE_SCENARIOS = [
         playAs: 'w',
         goal: 'Sacrifice a flank pawn to dominate the center, then execute the minority attack on the queenside',
         tip: 'The Queen\'s Gambit is not a true gambit because White can always regain the c4 pawn. Use the Carlsbad structure (after cxd5 exd5) to launch the b4-b5 minority attack!',
+        variations: [
+            {
+                id: 'main',
+                name: 'Declined — Carlsbad Structure (2...e6)',
+                moves: ['d4', 'd5', 'c4', 'e6', 'Nc3', 'Nf6', 'cxd5', 'exd5', 'Bg5', 'Be7', 'e3', 'O-O', 'Bd3', 'c6', 'Qc2', 'Nbd7'],
+                description: 'The premier positional battleground. White creates the Carlsbad structure, preparing the b4-b5 minority attack.'
+            },
+            {
+                id: 'accepted',
+                name: "Queen's Gambit Accepted (2...dxc4)",
+                moves: ['d4', 'd5', 'c4', 'dxc4', 'Nf3', 'Nf6', 'e3', 'e6', 'Bxc4', 'c5', 'O-O', 'a6', 'Bb3', 'Nc6', 'Qe2'],
+                description: 'Black accepts the gambit pawn. White reclaims it easily with e3 and Bxc4, securing central space and rapid mobilization.'
+            },
+            {
+                id: 'slav_defense',
+                name: 'Slav Defense Setup (2...c6)',
+                moves: ['d4', 'd5', 'c4', 'c6', 'Nf3', 'Nf6', 'Nc3', 'e6', 'e3', 'Nbd7', 'Bd3', 'dxc4', 'Bxc4', 'b5', 'Bd3'],
+                description: 'Black supports d5 with the c-pawn, keeping the c8-bishop unblocked. White contests central control with e3 and Bd3.'
+            },
+            {
+                id: 'albin_counter',
+                name: 'Albin Countergambit (2...e5)',
+                moves: ['d4', 'd5', 'c4', 'e5', 'dxe5', 'd4', 'Nf3', 'Nc6', 'a3', 'Bg4', 'Nbd2', 'Qe7', 'h3', 'Bh5'],
+                description: 'Violent central counter-attack! Black plays 2...e5 and creates a troublesome wedge with ...d4.'
+            }
+        ],
         literature: {
             bookTitle: 'The Ideas Behind the Chess Openings & The Queen\'s Gambit',
             sources: 'Reuben Fine, Matthew Sadler, Alexander Alekhine',
@@ -606,6 +716,32 @@ const PRACTICE_SCENARIOS = [
         playAs: 'b',
         goal: 'Control b5 with 5...a6, seize central space with ...e5, and unleash deadly counterplay on the semi-open c-file',
         tip: 'The favorite weapon of Garry Kasparov and Bobby Fischer! The Najdorf is the sharpest, most combative defense against 1.e4.',
+        variations: [
+            {
+                id: 'main',
+                name: 'English Attack (6.Be3 e5)',
+                moves: ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6', 'Nc3', 'a6', 'Be3', 'e5', 'Nb3', 'Be6', 'f3', 'Be7', 'Qd2', 'O-O'],
+                description: 'The sharpest modern battlefield. White prepares opposite-side castling with Qd2/f3, while Black expands with ...e5 and queenside play.'
+            },
+            {
+                id: 'classical_bg5',
+                name: 'Classical 6.Bg5 Line',
+                moves: ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6', 'Nc3', 'a6', 'Bg5', 'e6', 'f4', 'Be7', 'Qf3', 'Qc7', 'O-O-O', 'Nbd7'],
+                description: 'The historic favorite of Fischer and Tal. White pins the knight immediately; Black counter-attacks dynamically via ...Qc7 and ...Nbd7.'
+            },
+            {
+                id: 'quiet_be2',
+                name: 'Positional 6.Be2 (Karpov System)',
+                moves: ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6', 'Nc3', 'a6', 'Be2', 'e5', 'Nb3', 'Be7', 'O-O', 'O-O', 'Be3', 'Be6'],
+                description: 'Classical, deep positional chess championed by Anatoly Karpov. Black achieves harmonious development with ...Be7 and ...Be6.'
+            },
+            {
+                id: 'adams_h3',
+                name: 'Adams Attack (6.h3)',
+                moves: ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6', 'Nc3', 'a6', 'h3', 'e5', 'Nde2', 'h5', 'g3', 'Be6', 'Bg2', 'Nbd7'],
+                description: 'A cunning modern strike! White prepares g4; Black blunts the advance with 7...h5 and occupies central outposts.'
+            }
+        ],
         literature: {
             bookTitle: 'The Complete Najdorf: Modern Master Counterplay',
             sources: 'Bobby Fischer (My 60 Memorable Games), Garry Kasparov, John Nunn',
@@ -711,6 +847,32 @@ const PRACTICE_SCENARIOS = [
         playAs: 'b',
         goal: 'Pin White\'s knight with ...Bb4, shatter White\'s queenside pawns with ...Bxc3+, and undermine the d4 pawn chain base',
         tip: 'Nimzowitsch\'s favorite weapon! Always attack a pawn chain at its base with ...c5 and ...f6.',
+        variations: [
+            {
+                id: 'main',
+                name: 'Winawer Variation (3.Nc3 Bb4)',
+                moves: ['e4', 'e6', 'd4', 'd5', 'Nc3', 'Bb4', 'e5', 'c5', 'a3', 'Bxc3+', 'bxc3', 'Ne7', 'Qg4', 'O-O', 'Bd3', 'Nbc6'],
+                description: 'The sharpest French clash. Black pins the knight with ...Bb4 and doubles White\'s c-pawns.'
+            },
+            {
+                id: 'advance',
+                name: 'Advance Variation (3.e5 c5)',
+                moves: ['e4', 'e6', 'd4', 'd5', 'e5', 'c5', 'c3', 'Nc6', 'Nf3', 'Qb6', 'a3', 'c4', 'Nbd2', 'Na5'],
+                description: 'White locks the center with 3.e5. Black applies crushing pressure against the d4 base with ...c5 and ...Qb6.'
+            },
+            {
+                id: 'classical_nf6',
+                name: 'Classical Variation (3.Nc3 Nf6)',
+                moves: ['e4', 'e6', 'd4', 'd5', 'Nc3', 'Nf6', 'Bg5', 'Be7', 'e5', 'Nfd7', 'Bxe7', 'Qxe7', 'f4', 'O-O', 'Nf3', 'c5'],
+                description: 'Black meets 3.Nc3 with natural knight development 3...Nf6, leading to a rich strategic duel after 4.Bg5 Be7.'
+            },
+            {
+                id: 'tarrasch',
+                name: 'Tarrasch Variation (3.Nd2 c5)',
+                moves: ['e4', 'e6', 'd4', 'd5', 'Nd2', 'c5', 'exd5', 'Qxd5', 'Ngf3', 'cxd4', 'Bc4', 'Qd6', 'O-O', 'Nf6', 'Nb3', 'Nc6'],
+                description: 'White avoids pins with 3.Nd2. Black immediately strikes with 3...c5, isolating White\'s d-pawn or claiming open lines.'
+            }
+        ],
         literature: {
             bookTitle: 'Winning with the French Defense',
             sources: 'Wolfgang Uhlmann, Aaron Nimzowitsch (My System), Viktor Korchnoi',
@@ -759,6 +921,32 @@ const PRACTICE_SCENARIOS = [
         playAs: 'b',
         goal: 'Prepare ...d5 with ...c6 so the light-squared bishop develops freely to f5 outside the pawn chain',
         tip: 'The solid fortress favored by Anatoly Karpov! Unlike the French Defense, your c8 bishop is never trapped behind your pawns.',
+        variations: [
+            {
+                id: 'main',
+                name: 'Classical Capablanca Line (3.Nc3 dxe4)',
+                moves: ['e4', 'c6', 'd4', 'd5', 'Nc3', 'dxe4', 'Nxe4', 'Bf5', 'Ng3', 'Bg6', 'h4', 'h6', 'Nf3', 'Nd7', 'h5', 'Bh7', 'Bd3', 'Bxd3', 'Qxd3', 'e6'],
+                description: 'The classical fortress favored by Capablanca and Karpov. Black safely activates the light bishop to f5/g6.'
+            },
+            {
+                id: 'advance',
+                name: 'Advance Variation (3.e5 Bf5)',
+                moves: ['e4', 'c6', 'd4', 'd5', 'e5', 'Bf5', 'Nf3', 'e6', 'Be2', 'c5', 'Be3', 'Qb6', 'Nc3', 'Nc6', 'O-O', 'Qxb2'],
+                description: 'White seizes immediate central space with 3.e5. Black develops the bishop to f5 and attacks the d4 base with ...c5.'
+            },
+            {
+                id: 'panov',
+                name: 'Panov-Botvinnik Attack (3.exd5 cxd5 4.c4)',
+                moves: ['e4', 'c6', 'd4', 'd5', 'exd5', 'cxd5', 'c4', 'Nf6', 'Nc3', 'e6', 'Nf3', 'Be7', 'cxd5', 'Nxd5', 'Bd3', 'Nc6'],
+                description: 'White initiates an aggressive open IQP struggle with 4.c4. Black develops harmoniously and controls d5.'
+            },
+            {
+                id: 'tartakower',
+                name: 'Tartakower / Korchnoi (4...Nf6)',
+                moves: ['e4', 'c6', 'd4', 'd5', 'Nc3', 'dxe4', 'Nxe4', 'Nf6', 'Nxf6+', 'exf6', 'c3', 'Bd6', 'Bd3', 'O-O', 'Qc2', 'Re8+'],
+                description: 'Black invites 5.Nxf6+ exf6+, opening the e-file and establishing dynamic kingside counterplay.'
+            }
+        ],
         literature: {
             bookTitle: 'The Caro-Kann: Solid & Sound Repertoire',
             sources: 'Anatoly Karpov, Lars Schandorff, Peter Leko',
@@ -807,11 +995,37 @@ const PRACTICE_SCENARIOS = [
         name: 'King\'s Indian Defense',
         icon: '🔥',
         eco: 'E97',
-        moves: ['d4', 'Nf6', 'c4', 'g6', 'Nc3', 'Bg7', 'e4', 'd6', 'Nf3', 'O-O', 'Be2', 'e5', 'O-O', 'Nc6', 'd5', 'Ne7', 'Ne1', 'Nd7', 'Nd3', 'f5'],
+        moves: ['d4', 'Nf6', 'c4', 'g6', 'Nc3', 'Bg7', 'e4', 'd6', 'Nf3', 'O-O', 'Be2', 'e5', 'O-O', 'Nc6', 'd5', 'Ne7', 'Ne1', 'Nd7', 'Be3', 'f5', 'f3', 'f4'],
         fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
         playAs: 'b',
         goal: 'Cede the classical center, close it with ...e5, and launch a furious kingside mating assault with ...f5-f4 and ...g5-g4',
         tip: 'The ultimate counter-attacking weapon! Played with lethal effect by Garry Kasparov and Bobby Fischer. When White attacks on the queenside, Black checkmates on the kingside.',
+        variations: [
+            {
+                id: 'main',
+                name: 'Classical Mar del Plata (Main Line)',
+                moves: ['d4', 'Nf6', 'c4', 'g6', 'Nc3', 'Bg7', 'e4', 'd6', 'Nf3', 'O-O', 'Be2', 'e5', 'O-O', 'Nc6', 'd5', 'Ne7', 'Ne1', 'Nd7', 'Be3', 'f5', 'f3', 'f4'],
+                description: 'The monumental Mar del Plata battle. Black locks the center with ...e5 and launches the famous ...f5-f4 kingside assault.'
+            },
+            {
+                id: 'samisch',
+                name: 'Sämisch Variation (5.f3)',
+                moves: ['d4', 'Nf6', 'c4', 'g6', 'Nc3', 'Bg7', 'e4', 'd6', 'f3', 'O-O', 'Be3', 'e5', 'd5', 'c6', 'Qd2', 'cxd5', 'cxd5', 'a6'],
+                description: 'White bolsters e4 with 5.f3, preparing queenside castling. Black counters with ...c6 and queenside activity.'
+            },
+            {
+                id: 'fianchetto',
+                name: 'Fianchetto System (5.g3)',
+                moves: ['d4', 'Nf6', 'c4', 'g6', 'Nc3', 'Bg7', 'e4', 'd6', 'Nf3', 'O-O', 'g3', 'e5', 'Bg2', 'Nc6', 'd5', 'Ne7', 'O-O', 'Nd7'],
+                description: 'White plays 5.g3 and Bg2, neutralizing Black\'s king attack with positional solidity.'
+            },
+            {
+                id: 'averbakh',
+                name: 'Averbakh System (5.Be2 O-O 6.Bg5)',
+                moves: ['d4', 'Nf6', 'c4', 'g6', 'Nc3', 'Bg7', 'e4', 'd6', 'Be2', 'O-O', 'Bg5', 'c5', 'd5', 'h6', 'Bf4', 'e6', 'Qd2', 'exd5'],
+                description: 'White prevents an immediate ...e5 with 6.Bg5. Black strikes back immediately in the center with 6...c5.'
+            }
+        ],
         literature: {
             bookTitle: 'Zurich 1953 & The King\'s Indian Warfare',
             sources: 'David Bronstein (Zurich 1953), Garry Kasparov, John Burgess',
@@ -1356,6 +1570,42 @@ class PracticeManager {
 
     getScenarioById(id) {
         return this.scenarios.find(s => s.id === id) || null;
+    }
+
+    getVariationsForScenario(scenario) {
+        if (!scenario) return [];
+        if (scenario.variations && scenario.variations.length > 0) {
+            return scenario.variations;
+        }
+
+        const list = [
+            {
+                id: 'main',
+                name: 'Main Line',
+                moves: [...(scenario.moves || [])],
+                description: scenario.goal || 'Standard theoretical main line.'
+            }
+        ];
+
+        if (scenario.branches) {
+            Object.entries(scenario.branches).forEach(([prefixKey, branchItems], bIdx) => {
+                const prefixMoves = prefixKey ? prefixKey.split(' ').filter(Boolean) : [];
+                branchItems.forEach((branch, itemIdx) => {
+                    const varMoves = [...prefixMoves, branch.opponentMove];
+                    if (branch.theoryResponse) {
+                        varMoves.push(branch.theoryResponse);
+                    }
+                    list.push({
+                        id: `branch_${bIdx}_${itemIdx}`,
+                        name: branch.name || `Variation (${branch.opponentMove})`,
+                        moves: varMoves,
+                        description: branch.note || `Opponent plays ${branch.opponentMove}, met by ${branch.theoryResponse || 'sound play'}.`
+                    });
+                });
+            });
+        }
+
+        return list;
     }
 
     setCurrentScenario(id) {
