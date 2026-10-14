@@ -2635,6 +2635,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (s.side === 'b') {
                     sideBadge = '<span class="practice-result-badge" style="color: #a78bfa; font-weight: 800; font-size: 0.68rem; margin-right: 4px;">[Black ♚]</span>';
                 }
+            } else if (s.playAs) {
+                if (s.playAs === 'w') {
+                    sideBadge = '<span class="practice-result-badge" style="color: #34d399; font-weight: 800; font-size: 0.68rem; margin-right: 4px;">[White ♔]</span>';
+                } else if (s.playAs === 'b') {
+                    sideBadge = '<span class="practice-result-badge" style="color: #a78bfa; font-weight: 800; font-size: 0.68rem; margin-right: 4px;">[Black ♚]</span>';
+                }
             }
 
             const card = document.createElement('button');
@@ -2675,7 +2681,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Populate detail panel
         practiceDetailName.textContent = `${s.icon} ${s.name}`;
-        practiceDetailGoal.textContent = `Goal: ${s.goal}`;
+
+        let goalHtml = `<strong>Goal:</strong> ${s.goal}`;
+        if (s.literature) {
+            const litText = typeof s.literature === 'string' ? s.literature : (s.literature.bookTitle || s.literature.sources || '');
+            if (litText) {
+                goalHtml += `<div class="practice-literature-badge" style="font-size:0.73rem; color:#a78bfa; margin-top:4px; font-weight:600;">📚 ${litText}</div>`;
+            }
+        }
+        if (s.setupMove) {
+            const smFrom = s.setupMove.substring(0, 2);
+            const smTo = s.setupMove.substring(2, 4);
+            goalHtml += `<div style="font-size:0.72rem; color:var(--text-muted); margin-top:3px;">⚔️ <em>Starts with opponent move: <strong>${smFrom} ➔ ${smTo}</strong></em></div>`;
+        }
+        practiceDetailGoal.innerHTML = goalHtml;
 
         // Pre-select recommended side
         practiceSelectSide.value = s.playAs;
@@ -2696,6 +2715,15 @@ document.addEventListener('DOMContentLoaded', () => {
         setBoardOrientation(previewSide === 'b');
         boardRenderer.clearArrows();
         boardRenderer.clearHighlights();
+
+        if (s.setupMove) {
+            const from = s.setupMove.substring(0, 2);
+            const to = s.setupMove.substring(2, 4);
+            boardRenderer.drawArrow(from, to, '#ef4444', 10);
+            boardRenderer.highlightSquare(from, 'rgba(239, 68, 68, 0.35)');
+            boardRenderer.highlightSquare(to, 'rgba(239, 68, 68, 0.45)');
+        }
+
         updateUI();
     }
 
@@ -3669,15 +3697,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!s) return;
 
         practicePlayerColor = practiceSelectSide.value;
-        practiceIsActive = true;
         moveHistory = [];
         prevEvalScore = 0;
         selectedSquare = null;
 
-        chess.load(s.fen);
-        setBoardOrientation(practicePlayerColor === 'b');
-        boardRenderer.clearArrows();
-        boardRenderer.clearHighlights();
+        if (practiceBotTimeout) {
+            clearTimeout(practiceBotTimeout);
+            practiceBotTimeout = null;
+        }
 
         // Show in-game UI
         practiceDetailPanel.style.display = 'none';
@@ -3692,6 +3719,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Tip in-game
         practiceTipTextIngame.textContent = s.tip;
+
+        // Handle positions starting with an opponent setup move (like puzzles)
+        if (s.preFen && s.setupMove) {
+            chess.load(s.preFen);
+            setBoardOrientation(practicePlayerColor === 'b');
+            boardRenderer.clearArrows();
+            boardRenderer.clearHighlights();
+            practiceIsActive = false;
+            updateUI();
+
+            practiceBotTimeout = setTimeout(() => {
+                const sm = s.setupMove;
+                const from = sm.substring(0, 2);
+                const to = sm.substring(2, 4);
+                const promo = sm.substring(4, 5) || 'q';
+                const moveObj = chess.move({ from, to, promotion: promo });
+                if (chess.in_check()) sounds.playCheck();
+                else if (moveObj && moveObj.captured) sounds.playCapture();
+                else sounds.playMove();
+
+                boardRenderer.clearArrows();
+                boardRenderer.drawArrow(from, to, '#ef4444', 10);
+                boardRenderer.clearHighlights();
+                boardRenderer.highlightSquare(from, 'rgba(239, 68, 68, 0.35)');
+                boardRenderer.highlightSquare(to, 'rgba(239, 68, 68, 0.45)');
+
+                practiceIsActive = true;
+                updateUI();
+                triggerEngineEvaluation();
+
+                if (chess.turn() !== practicePlayerColor) {
+                    practiceBotTimeout = setTimeout(makePracticeBotMove, 500);
+                }
+            }, 350);
+            return;
+        }
+
+        // Standard scenario without setup move
+        chess.load(s.fen);
+        setBoardOrientation(practicePlayerColor === 'b');
+        boardRenderer.clearArrows();
+        boardRenderer.clearHighlights();
+        practiceIsActive = true;
 
         updateUI();
         triggerEngineEvaluation();
@@ -3903,15 +3973,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (practiceResultBanner) practiceResultBanner.style.display = 'none';
         practiceIsActive = true;
 
-        const history = chess.history();
-        if (!history || history.length === 0) return;
+        if (!moveHistory || moveHistory.length === 0) return;
 
         // If it's the player's turn, Stockfish just replied to the player's move.
         // Undo both the bot's move and the player's move so player can make another move.
         // If it's the bot's turn (player just moved and bot hasn't moved yet), undo 1 move.
         let movesToUndo = 1;
         if (chess.turn() === practicePlayerColor) {
-            movesToUndo = (history.length >= 2) ? 2 : 1;
+            movesToUndo = (moveHistory.length >= 2) ? 2 : 1;
         } else {
             movesToUndo = 1;
         }
