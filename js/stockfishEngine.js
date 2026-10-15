@@ -26,6 +26,12 @@ class StockfishEngine {
         }
     }
 
+    stop() {
+        this.onBestMoveCallback = null;
+        this.onEvalCallback = null;
+        this.send('stop');
+    }
+
     setSkillLevel(skillLevel = 20, targetElo = 2500) {
         this.send(`setoption name Skill Level value ${skillLevel}`);
         this.send(`setoption name UCI_LimitStrength value true`);

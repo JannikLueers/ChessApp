@@ -1935,7 +1935,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Keyboard navigation during Practice session vs Stockfish
-        if (practiceIsActive) {
+        if (practiceIsActive || (practiceIngameControls && practiceIngameControls.style.display === 'block')) {
             if (e.key === 'ArrowLeft' || e.key === 'Backspace' || e.key === 'u' || e.key === 'U') {
                 e.preventDefault();
                 undoPracticeMove();
@@ -2524,6 +2524,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnPracticeRetry      = document.getElementById('btn-practice-retry');
     const btnPracticeUndo       = document.getElementById('btn-practice-undo');
     const btnPracticeBack       = document.getElementById('btn-practice-back');
+    const btnPracticeDetailBack = document.getElementById('btn-practice-detail-back');
     const categoryPills         = document.querySelectorAll('.practice-pill');
 
     // DOM refs for openings study panel & subfilters
@@ -3988,7 +3989,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function undoPracticeMove() {
-        if (!practiceIsActive) return;
+        if (!practiceIngameControls || practiceIngameControls.style.display !== 'block') return;
 
         if (practiceBotTimeout) {
             clearTimeout(practiceBotTimeout);
@@ -3998,7 +3999,7 @@ document.addEventListener('DOMContentLoaded', () => {
             clearTimeout(practiceFallbackTimer);
             practiceFallbackTimer = null;
         }
-        if (practiceEngine) {
+        if (practiceEngine && typeof practiceEngine.stop === 'function') {
             practiceEngine.stop();
         }
 
@@ -4016,6 +4017,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             movesToUndo = 1;
         }
+        movesToUndo = Math.min(movesToUndo, moveHistory.length);
 
         for (let i = 0; i < movesToUndo; i++) {
             chess.undo();
@@ -4075,7 +4077,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 clearTimeout(practiceFallbackTimer);
                 practiceFallbackTimer = null;
             }
-            if (practiceEngine) {
+            if (practiceEngine && typeof practiceEngine.stop === 'function') {
                 practiceEngine.stop();
             }
             if (activeOpeningScenario) {
@@ -4112,7 +4114,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 clearTimeout(practiceFallbackTimer);
                 practiceFallbackTimer = null;
             }
-            if (practiceEngine) {
+            if (practiceEngine && typeof practiceEngine.stop === 'function') {
                 practiceEngine.stop();
             }
             practiceIsActive = false;
@@ -4127,22 +4129,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            if (practiceManager.currentScenario) {
-                selectPracticeScenario(practiceManager.currentScenario.id);
-                return;
-            }
-
+            // Return to Scenario List
+            practiceManager.currentScenario = null;
             practiceIngameControls.style.display = 'none';
             practiceDetailPanel.style.display = 'none';
             if (practiceOpeningPanel) practiceOpeningPanel.style.display = 'none';
             practiceScenarioList.style.display = 'flex';
+
             const practiceCategoryPills = document.getElementById('practice-category-pills');
             if (practiceCategoryPills) practiceCategoryPills.style.display = 'flex';
             const practiceScenarioCount = document.getElementById('practice-scenario-count');
             if (practiceScenarioCount) practiceScenarioCount.style.display = 'inline';
+
+            // Deselect any active cards in the list
+            practiceScenarioList.querySelectorAll('.practice-scenario-card').forEach(c => c.classList.remove('active'));
+
             boardRenderer.clearArrows();
             boardRenderer.clearHighlights();
             chess.reset();
+            setBoardOrientation(false);
+            updateUI();
+            renderPracticeScenarioList(practiceCurrentCategory);
+        });
+    }
+
+    if (btnPracticeDetailBack) {
+        btnPracticeDetailBack.addEventListener('click', () => {
+            practiceManager.currentScenario = null;
+            practiceDetailPanel.style.display = 'none';
+            practiceIngameControls.style.display = 'none';
+            practiceScenarioList.style.display = 'flex';
+            practiceScenarioList.querySelectorAll('.practice-scenario-card').forEach(c => c.classList.remove('active'));
+            boardRenderer.clearArrows();
+            boardRenderer.clearHighlights();
+            chess.reset();
+            setBoardOrientation(false);
             updateUI();
         });
     }
