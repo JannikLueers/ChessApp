@@ -383,6 +383,17 @@ class BoardRenderer {
         this.renderAllOverlayArrows();
     }
 
+    highlightSquare(sqName, color = null) {
+        if (!sqName || !this.boardEl) return;
+        const sqEl = this.boardEl.querySelector(`[data-square="${sqName}"]`);
+        if (!sqEl) return;
+        if (color) {
+            sqEl.style.backgroundColor = color;
+        } else {
+            sqEl.classList.add('last-move');
+        }
+    }
+
     clearHighlights() {
         this.selectedSquare = null;
         this.legalMoves = [];
@@ -392,6 +403,7 @@ class BoardRenderer {
 
         const squares = this.boardEl.querySelectorAll('.square');
         squares.forEach(sqEl => {
+            sqEl.style.backgroundColor = '';
             sqEl.classList.remove('selected', 'last-move', 'in-check', 'marked-right-click');
             const dot = sqEl.querySelector('.move-dot, .capture-ring');
             if (dot) dot.remove();
@@ -417,9 +429,10 @@ class BoardRenderer {
                 const sqEl = this.boardEl.querySelector(`[data-square="${sqName}"]`);
                 if (!sqEl) continue;
 
-                // Reset class list
+                // Reset class list and custom background styling
                 const isLight = (r + f) % 2 === 0;
                 sqEl.className = `square ${isLight ? 'light' : 'dark'}`;
+                sqEl.style.backgroundColor = '';
                 if (this.markedSquares.has(sqName)) {
                     sqEl.classList.add('marked-right-click');
                 }

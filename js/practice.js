@@ -83,13 +83,13 @@ const PRACTICE_SCENARIOS = [
         category: 'endgames',
         name: 'King Triangulation & Zugzwang',
         icon: '♟',
-        preFen: '8/8/3k4/8/3K4/2P5/8/8 w - - 0 1',
-        setupMove: 'd4c4',
-        fen: '8/8/3k4/8/2K5/2P5/8/8 b - - 1 1',
+        preFen: '8/8/4k3/8/3K4/2P5/8/8 b - - 0 1',
+        setupMove: 'e6d6',
+        fen: '8/8/3k4/8/3K4/2P5/8/8 w - - 1 2',
         playAs: 'w',
         literature: 'Mark Dvoretsky (Endgame Manual, Ch. 2 "Zugzwang")',
-        goal: 'Force Black into zugzwang to invade the queenside and promote the c-pawn',
-        tip: 'Black must move and cede control of d5 or b5. If Black plays 1...Kc6, White plays 2. Kb4 Kd6 3. Kb5 outflanking Black! Do not let Black regain the opposition.',
+        goal: 'Use triangulation (1. Kc4!) to seize the opposition and promote the c-pawn',
+        tip: 'Black just played 1...Kd6 to oppose your king. Use triangulation: play 1. Kc4! Black is in zugzwang and must yield ground (1...Kc6 2. Kb4 Kd6 3. Kb5). Outflank Black and push your pawn!',
         difficulty_note: 'Win for White'
     },
 
@@ -201,11 +201,11 @@ const PRACTICE_SCENARIOS = [
         category: 'endgames',
         name: 'Same-Colored Bishops: Outside Passed Pawn',
         icon: '♗',
-        fen: '8/8/5bp1/P4p1p/5B1P/6P1/4K3/1k6 b - - 0 1',
+        fen: '8/8/5bp1/P4p1p/5B1P/6P1/4K3/1k6 w - - 0 1',
         playAs: 'w',
         literature: 'Mark Dvoretsky (Endgame Manual, Ch. 3) & Jeremy Silman',
         goal: 'Use the outside a-pawn to distract Black\'s bishop, then invade with the king',
-        tip: 'In same-colored bishop endings, an outside passed pawn is decisive. Black\'s bishop is tied down to stopping the a-pawn, allowing White\'s king to march to the kingside and capture Black\'s pawns.',
+        tip: 'In same-colored bishop endings, an outside passed pawn is decisive. Play 1. a6 Bd4 2. Be3! Black\'s bishop is tied down, allowing White\'s king to march to the kingside and capture Black\'s pawns.',
         difficulty_note: 'Win for White'
     },
     {

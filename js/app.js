@@ -281,6 +281,10 @@ document.addEventListener('DOMContentLoaded', () => {
         moveHistoryCard.style.display = 'none';
         practiceIsActive = false;
         isOpeningPracticeActive = false;
+        activeOpeningScenario = null;
+        activeOpeningVariation = null;
+        activeOpeningVariationsList = [];
+        practiceLastMove = null;
         stopOpeningAutoPlay();
         if (practiceOpeningPanel) practiceOpeningPanel.style.display = 'none';
         if (practiceDetailPanel) practiceDetailPanel.style.display = 'none';
@@ -2571,6 +2575,10 @@ document.addEventListener('DOMContentLoaded', () => {
             practiceCurrentCategory = pill.dataset.category;
             stopOpeningAutoPlay();
             isOpeningPracticeActive = false;
+            activeOpeningScenario = null;
+            activeOpeningVariation = null;
+            activeOpeningVariationsList = [];
+            practiceLastMove = null;
             practiceDetailPanel.style.display = 'none';
             if (practiceOpeningPanel) practiceOpeningPanel.style.display = 'none';
             practiceIngameControls.style.display = 'none';
@@ -2677,6 +2685,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Non-opening scenario flow
         stopOpeningAutoPlay();
         isOpeningPracticeActive = false;
+        activeOpeningScenario = null;
+        activeOpeningVariation = null;
+        activeOpeningVariationsList = [];
         if (practiceOpeningPanel) practiceOpeningPanel.style.display = 'none';
 
         // Populate detail panel
@@ -2711,6 +2722,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Preview position
         chess.load(s.fen);
         practiceIsActive = false;
+        practiceLastMove = null;
         const previewSide = practiceSelectSide.value;
         setBoardOrientation(previewSide === 'b');
         boardRenderer.clearArrows();
@@ -2719,12 +2731,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (s.setupMove) {
             const from = s.setupMove.substring(0, 2);
             const to = s.setupMove.substring(2, 4);
+            practiceLastMove = { from, to };
             boardRenderer.drawArrow(from, to, '#ef4444', 10);
-            boardRenderer.highlightSquare(from, 'rgba(239, 68, 68, 0.35)');
-            boardRenderer.highlightSquare(to, 'rgba(239, 68, 68, 0.45)');
         }
 
         updateUI();
+
+        if (s.setupMove) {
+            const from = s.setupMove.substring(0, 2);
+            const to = s.setupMove.substring(2, 4);
+            boardRenderer.highlightSquare(from, 'rgba(239, 68, 68, 0.35)');
+            boardRenderer.highlightSquare(to, 'rgba(239, 68, 68, 0.45)');
+        }
     }
 
     // ==========================================================================
@@ -3677,6 +3695,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let practiceBotTimeout = null;
     let practiceFallbackTimer = null;
+    let practiceLastMove = null;
 
     if (practiceSelectSide) {
         practiceSelectSide.addEventListener('change', () => {
@@ -3696,6 +3715,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const s = practiceManager.currentScenario;
         if (!s) return;
 
+        activeOpeningScenario = null;
+        activeOpeningVariation = null;
+        activeOpeningVariationsList = [];
         practicePlayerColor = practiceSelectSide.value;
         moveHistory = [];
         prevEvalScore = 0;
@@ -3727,30 +3749,38 @@ document.addEventListener('DOMContentLoaded', () => {
             boardRenderer.clearArrows();
             boardRenderer.clearHighlights();
             practiceIsActive = false;
+            practiceLastMove = null;
             updateUI();
 
             practiceBotTimeout = setTimeout(() => {
-                const sm = s.setupMove;
-                const from = sm.substring(0, 2);
-                const to = sm.substring(2, 4);
-                const promo = sm.substring(4, 5) || 'q';
-                const moveObj = chess.move({ from, to, promotion: promo });
-                if (chess.in_check()) sounds.playCheck();
-                else if (moveObj && moveObj.captured) sounds.playCapture();
-                else sounds.playMove();
+                let from = '', to = '';
+                try {
+                    const sm = s.setupMove;
+                    from = sm.substring(0, 2);
+                    to = sm.substring(2, 4);
+                    const promo = sm.substring(4, 5) || 'q';
+                    const moveObj = chess.move({ from, to, promotion: promo });
+                    if (chess.in_check()) sounds.playCheck();
+                    else if (moveObj && moveObj.captured) sounds.playCapture();
+                    else sounds.playMove();
 
-                boardRenderer.clearArrows();
-                boardRenderer.drawArrow(from, to, '#ef4444', 10);
-                boardRenderer.clearHighlights();
-                boardRenderer.highlightSquare(from, 'rgba(239, 68, 68, 0.35)');
-                boardRenderer.highlightSquare(to, 'rgba(239, 68, 68, 0.45)');
+                    practiceLastMove = { from, to };
+                } catch (err) {
+                    console.error('Error executing practice setup move:', err);
+                } finally {
+                    practiceIsActive = true;
+                    updateUI();
+                    if (from && to) {
+                        boardRenderer.clearArrows();
+                        boardRenderer.drawArrow(from, to, '#ef4444', 10);
+                        boardRenderer.highlightSquare(from, 'rgba(239, 68, 68, 0.35)');
+                        boardRenderer.highlightSquare(to, 'rgba(239, 68, 68, 0.45)');
+                    }
+                    triggerEngineEvaluation();
 
-                practiceIsActive = true;
-                updateUI();
-                triggerEngineEvaluation();
-
-                if (chess.turn() !== practicePlayerColor) {
-                    practiceBotTimeout = setTimeout(makePracticeBotMove, 500);
+                    if (chess.turn() !== practicePlayerColor) {
+                        practiceBotTimeout = setTimeout(makePracticeBotMove, 500);
+                    }
                 }
             }, 350);
             return;
@@ -3761,6 +3791,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setBoardOrientation(practicePlayerColor === 'b');
         boardRenderer.clearArrows();
         boardRenderer.clearHighlights();
+        practiceLastMove = null;
         practiceIsActive = true;
 
         updateUI();
@@ -3784,6 +3815,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else if (moveObj.captured) sounds.playCapture();
         else sounds.playMove();
 
+        practiceLastMove = null;
         moveHistory.push(moveObj);
         updateUI();
         triggerPracticeEvaluation();
@@ -3999,11 +4031,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (moveHistory.length > 0) {
             const lastMove = moveHistory[moveHistory.length - 1];
+            practiceLastMove = null;
             boardRenderer.highlightSquare(lastMove.from, 'rgba(16, 185, 129, 0.35)');
             boardRenderer.highlightSquare(lastMove.to, 'rgba(16, 185, 129, 0.45)');
+        } else {
+            // Undone all the way back to initial position!
+            const s = practiceManager.currentScenario;
+            if (s && s.setupMove) {
+                const sm = s.setupMove;
+                const from = sm.substring(0, 2);
+                const to = sm.substring(2, 4);
+                practiceLastMove = { from, to };
+                boardRenderer.drawArrow(from, to, '#ef4444', 10);
+            } else {
+                practiceLastMove = null;
+            }
         }
 
         updateUI();
+
+        if (moveHistory.length === 0 && practiceManager.currentScenario && practiceManager.currentScenario.setupMove) {
+            const sm = practiceManager.currentScenario.setupMove;
+            boardRenderer.highlightSquare(sm.substring(0, 2), 'rgba(239, 68, 68, 0.35)');
+            boardRenderer.highlightSquare(sm.substring(2, 4), 'rgba(239, 68, 68, 0.45)');
+        }
+
         triggerPracticeEvaluation();
     }
 
@@ -4033,6 +4085,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 moveHistory = [...openingHistoryMoves];
                 selectedSquare = null;
+                practiceLastMove = null;
                 practiceIsActive = true;
                 if (practiceResultBanner) practiceResultBanner.style.display = 'none';
                 boardRenderer.clearArrows();
@@ -4065,14 +4118,28 @@ document.addEventListener('DOMContentLoaded', () => {
             practiceIsActive = false;
             isOpeningPracticeActive = false;
             stopOpeningAutoPlay();
-            practiceIngameControls.style.display = 'none';
-            practiceDetailPanel.style.display = 'none';
+            practiceLastMove = null;
+
             if (activeOpeningScenario) {
+                practiceIngameControls.style.display = 'none';
+                practiceDetailPanel.style.display = 'none';
                 startOpeningStudy(activeOpeningScenario);
                 return;
             }
+
+            if (practiceManager.currentScenario) {
+                selectPracticeScenario(practiceManager.currentScenario.id);
+                return;
+            }
+
+            practiceIngameControls.style.display = 'none';
+            practiceDetailPanel.style.display = 'none';
             if (practiceOpeningPanel) practiceOpeningPanel.style.display = 'none';
             practiceScenarioList.style.display = 'flex';
+            const practiceCategoryPills = document.getElementById('practice-category-pills');
+            if (practiceCategoryPills) practiceCategoryPills.style.display = 'flex';
+            const practiceScenarioCount = document.getElementById('practice-scenario-count');
+            if (practiceScenarioCount) practiceScenarioCount.style.display = 'inline';
             boardRenderer.clearArrows();
             boardRenderer.clearHighlights();
             chess.reset();
@@ -4128,6 +4195,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let lastMove = moveHistory[moveHistory.length - 1] || null;
         if (currentMode === 'puzzles' && puzzleLastMove) {
             lastMove = puzzleLastMove;
+        } else if (currentMode === 'practice' && practiceLastMove) {
+            lastMove = practiceLastMove;
         }
 
         boardRenderer.renderBoard(chess, {
