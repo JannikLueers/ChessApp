@@ -157,6 +157,10 @@
                 <!-- Interactive Evaluation Line Graph Canvas -->
                 <div class="eval-graph-container" style="margin-bottom: 0.35rem;" title="Click anywhere on graph to jump to that move!">
                     <canvas id="eval-graph-canvas" class="eval-graph-canvas"></canvas>
+                    <div id="analysis-progress-overlay" class="analysis-progress-overlay" style="display: none;">
+                        <span id="analysis-progress-text">Analyzing: 0% (Depth 14)</span>
+                        <div class="analysis-progress-bar"><div id="analysis-progress-fill" class="analysis-progress-fill"></div></div>
+                    </div>
                 </div>
 
                 <!-- Accuracy Score Badges Bar & Move Scrubber -->

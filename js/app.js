@@ -829,9 +829,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (evalRes.isMate) numScore = evalRes.score.includes('-') ? -10 : 10;
 
             if (currentMode === 'analysis' && analyzedGame) {
-                gameEvalScores[analysisStep] = numScore;
+                // Keep the game review evaluation curve fixed; only record if undefined
                 if (!analyzedGame.evalScores) analyzedGame.evalScores = [];
-                analyzedGame.evalScores[analysisStep] = numScore;
+                if (analyzedGame.evalScores[analysisStep] === undefined || analyzedGame.evalScores[analysisStep] === null) {
+                    analyzedGame.evalScores[analysisStep] = numScore;
+                    gameEvalScores[analysisStep] = numScore;
+                }
             } else {
                 gameEvalScores[moveHistory.length] = numScore;
             }
@@ -987,42 +990,64 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (totalMoves === 0) return;
 
-        // Fill area under line (Soft Emerald Tint)
-        ctx.beginPath();
-        for (let i = 0; i <= totalMoves; i++) {
-            const x = (i / totalMoves) * w;
-            let val = (gameEvalScores && gameEvalScores[i] !== undefined) ? gameEvalScores[i] : 0;
-            if (isFlipped) val = -val;
-
-            const clampedVal = Math.min(Math.max(val, -8), 8);
-            const y = zeroY - (clampedVal / 8) * (h / 2 - 6);
-
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
+        // Find how many moves have been evaluated so far
+        let maxEvaluatedStep = 0;
+        let hasEvaluatedScores = false;
+        if (analyzedGame && analyzedGame.isFullyEvaluated) {
+            maxEvaluatedStep = totalMoves;
+            hasEvaluatedScores = true;
+        } else if (gameEvalScores && gameEvalScores.length > 0) {
+            for (let i = 0; i <= totalMoves; i++) {
+                if (gameEvalScores[i] !== undefined && gameEvalScores[i] !== null) {
+                    maxEvaluatedStep = i;
+                    hasEvaluatedScores = true;
+                }
+            }
+        } else {
+            maxEvaluatedStep = totalMoves;
+            hasEvaluatedScores = true;
         }
-        ctx.lineTo(w, zeroY);
-        ctx.lineTo(0, zeroY);
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
-        ctx.fill();
 
-        // Plot main evaluation line
-        ctx.beginPath();
-        ctx.strokeStyle = '#10b981';
-        ctx.lineWidth = 2;
+        if (hasEvaluatedScores && maxEvaluatedStep > 0) {
+            const endX = (maxEvaluatedStep / totalMoves) * w;
 
-        for (let i = 0; i <= totalMoves; i++) {
-            const x = (i / totalMoves) * w;
-            let val = (gameEvalScores && gameEvalScores[i] !== undefined) ? gameEvalScores[i] : 0;
-            if (isFlipped) val = -val;
+            // Fill area under line (Soft Emerald Tint)
+            ctx.beginPath();
+            for (let i = 0; i <= maxEvaluatedStep; i++) {
+                const x = (i / totalMoves) * w;
+                let val = (gameEvalScores && gameEvalScores[i] !== undefined && gameEvalScores[i] !== null) ? gameEvalScores[i] : 0;
+                if (isFlipped) val = -val;
 
-            const clampedVal = Math.min(Math.max(val, -8), 8);
-            const y = zeroY - (clampedVal / 8) * (h / 2 - 6);
+                const clampedVal = Math.min(Math.max(val, -8), 8);
+                const y = zeroY - (clampedVal / 8) * (h / 2 - 6);
 
-            if (i === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.lineTo(endX, zeroY);
+            ctx.lineTo(0, zeroY);
+            ctx.closePath();
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+            ctx.fill();
+
+            // Plot main evaluation line
+            ctx.beginPath();
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2;
+
+            for (let i = 0; i <= maxEvaluatedStep; i++) {
+                const x = (i / totalMoves) * w;
+                let val = (gameEvalScores && gameEvalScores[i] !== undefined && gameEvalScores[i] !== null) ? gameEvalScores[i] : 0;
+                if (isFlipped) val = -val;
+
+                const clampedVal = Math.min(Math.max(val, -8), 8);
+                const y = zeroY - (clampedVal / 8) * (h / 2 - 6);
+
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
         }
-        ctx.stroke();
 
         // Cursor Indicator for current analysisStep
         const currentStep = Math.min(analysisStep, totalMoves);
@@ -1035,7 +1060,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.stroke();
 
         // Cursor Dot
-        let currentVal = (gameEvalScores && gameEvalScores[currentStep] !== undefined) ? gameEvalScores[currentStep] : 0;
+        let currentVal = (gameEvalScores && gameEvalScores[currentStep] !== undefined && gameEvalScores[currentStep] !== null) ? gameEvalScores[currentStep] : 0;
         if (isFlipped) currentVal = -currentVal;
         const currentClamped = Math.min(Math.max(currentVal, -8), 8);
         const cursorY = zeroY - (currentClamped / 8) * (h / 2 - 6);
@@ -1396,6 +1421,9 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 1; i < gameObj.evalScores.length && i - 1 < gameObj.moves.length; i++) {
             const prevScore = gameObj.evalScores[i - 1];
             const currScore = gameObj.evalScores[i];
+            if (prevScore === null || currScore === null || prevScore === undefined || currScore === undefined) {
+                continue;
+            }
             const moveObj = gameObj.moves[i - 1];
 
             const prevNum = StockfishEngine.parseScoreToNumeric(prevScore);
@@ -1427,13 +1455,72 @@ document.addEventListener('DOMContentLoaded', () => {
         return { white: whiteAcc, black: blackAcc };
     }
 
-    // Batch Stockfish Evaluation across all positions with Real-Time Visual Playback & Auto-Reset
+    // Batch Background Stockfish Evaluation across all positions (Depth 14, non-blocking)
     let currentGraphEvalToken = 0;
+
+    function showAnalysisProgress(current, total) {
+        const overlay = document.getElementById('analysis-progress-overlay');
+        const textEl = document.getElementById('analysis-progress-text');
+        const fillEl = document.getElementById('analysis-progress-fill');
+        if (!overlay || !textEl || !fillEl) return;
+
+        const pct = Math.min(100, Math.round((current / Math.max(1, total)) * 100));
+        overlay.style.display = 'flex';
+        overlay.style.opacity = '1';
+        textEl.textContent = `Analyzing: ${pct}% (Depth 14)`;
+        textEl.style.color = '#38bdf8';
+        fillEl.style.width = `${pct}%`;
+        fillEl.style.background = '#38bdf8';
+    }
+
+    function hideAnalysisProgress() {
+        const overlay = document.getElementById('analysis-progress-overlay');
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+    }
+
+    function showAnalysisComplete() {
+        const overlay = document.getElementById('analysis-progress-overlay');
+        const textEl = document.getElementById('analysis-progress-text');
+        const fillEl = document.getElementById('analysis-progress-fill');
+        if (!overlay || !textEl || !fillEl) return;
+
+        overlay.style.display = 'flex';
+        overlay.style.opacity = '1';
+        textEl.textContent = `✓ Review Ready (Depth 14)`;
+        textEl.style.color = 'var(--accent-emerald, #10b981)';
+        fillEl.style.width = '100%';
+        fillEl.style.background = 'var(--accent-emerald, #10b981)';
+
+        setTimeout(() => {
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                textEl.style.color = '#38bdf8';
+                fillEl.style.background = '#38bdf8';
+            }, 300);
+        }, 1800);
+    }
 
     function calculateFullGameStockfishGraph(gameObj) {
         if (!gameObj || !gameObj.moves || gameObj.moves.length === 0) return;
 
+        // If the game was already fully evaluated, simply load the cached results
+        if (gameObj.isFullyEvaluated && Array.isArray(gameObj.evalScores) && gameObj.evalScores.length === gameObj.moves.length + 1) {
+            gameEvalScores = [...gameObj.evalScores];
+            const accRes = calculateAccuracyFromEvalScores(gameObj);
+            gameObj.accuracy = accRes;
+            if (whiteAccuracyVal) whiteAccuracyVal.textContent = `${gameObj.accuracy.white}%`;
+            if (blackAccuracyVal) blackAccuracyVal.textContent = `${gameObj.accuracy.black}%`;
+            hideAnalysisProgress();
+            drawEvalGraph();
+            renderMoveTable();
+            return;
+        }
+
         const myToken = ++currentGraphEvalToken;
+        graphEngine.stop();
 
         const tempChess = new Chess();
         const fens = [tempChess.fen()];
@@ -1442,9 +1529,11 @@ document.addEventListener('DOMContentLoaded', () => {
             fens.push(tempChess.fen());
         });
 
-        gameObj.evalScores = new Array(fens.length).fill(0);
+        // Initialize with null so the graph cleanly advances from left to right as each move finishes
+        gameObj.evalScores = new Array(fens.length).fill(null);
         gameEvalScores = [...gameObj.evalScores];
         drawEvalGraph();
+        showAnalysisProgress(0, fens.length);
 
         let idx = 0;
         let isStepEvaluating = false;
@@ -1452,6 +1541,7 @@ document.addEventListener('DOMContentLoaded', () => {
         function evaluateNextFen() {
             if (isStepEvaluating) return;
             if (myToken !== currentGraphEvalToken || !analyzedGame || analyzedGame !== gameObj) {
+                hideAnalysisProgress();
                 return;
             }
 
@@ -1461,11 +1551,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 gameObj.accuracy = accRes;
                 if (whiteAccuracyVal) whiteAccuracyVal.textContent = `${gameObj.accuracy.white}%`;
                 if (blackAccuracyVal) blackAccuracyVal.textContent = `${gameObj.accuracy.black}%`;
-                if (analyzedGame === gameObj) {
-                    jumpToAnalysisStep(0, false);
-                }
                 saveGamesToStorage(savedGames);
                 drawEvalGraph();
+                renderMoveTable();
+                showAnalysisComplete();
                 return;
             }
 
@@ -1473,9 +1562,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const targetIdx = idx;
             const fen = fens[targetIdx];
 
-            graphEngine.getBestMove(fen, 6, () => {
+            // Evaluate in background at maximum depth 14
+            graphEngine.getBestMove(fen, 14, () => {
                 if (myToken !== currentGraphEvalToken || analyzedGame !== gameObj) {
                     isStepEvaluating = false;
+                    hideAnalysisProgress();
                     return;
                 }
 
@@ -1492,12 +1583,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     gameObj.accuracy = liveAcc;
                     if (whiteAccuracyVal) whiteAccuracyVal.textContent = `${liveAcc.white}%`;
                     if (blackAccuracyVal) blackAccuracyVal.textContent = `${liveAcc.black}%`;
-                    jumpToAnalysisStep(targetIdx, true);
+                    // Redraw graph progressively WITHOUT moving the board or changing analysisStep
+                    drawEvalGraph();
+                    // If user is currently looking at this move, update eval bar immediately
+                    if (analysisStep === targetIdx) {
+                        updateEvalBar(scoreStr, graphEngine.currentEval.isMate);
+                    }
+                    if (targetIdx % 4 === 0) {
+                        renderMoveTable();
+                    }
                 }
 
                 idx++;
+                showAnalysisProgress(idx, fens.length);
                 isStepEvaluating = false;
-                setTimeout(evaluateNextFen, 35);
+                setTimeout(evaluateNextFen, 20);
             });
         }
 
@@ -1511,10 +1611,22 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('black-name').textContent = gameObj.headers.black;
         document.getElementById('black-rating').textContent = `Rating: ${gameObj.headers.blackElo}`;
 
-        gameObj.evalScores = new Array(gameObj.moves.length + 1).fill(0);
+        if (gameObj.isFullyEvaluated && Array.isArray(gameObj.evalScores) && gameObj.evalScores.length === gameObj.moves.length + 1) {
+            gameEvalScores = [...gameObj.evalScores];
+            const accRes = calculateAccuracyFromEvalScores(gameObj);
+            gameObj.accuracy = accRes;
+            if (whiteAccuracyVal) whiteAccuracyVal.textContent = `${gameObj.accuracy.white}%`;
+            if (blackAccuracyVal) blackAccuracyVal.textContent = `${gameObj.accuracy.black}%`;
+            hideAnalysisProgress();
+            jumpToAnalysisStep(0);
+            drawEvalGraph();
+            return;
+        }
+
+        gameObj.evalScores = new Array(gameObj.moves.length + 1).fill(null);
         gameEvalScores = [...gameObj.evalScores];
 
-        jumpToAnalysisStep(0, true);
+        jumpToAnalysisStep(0);
         calculateFullGameStockfishGraph(gameObj);
     }
 
@@ -2054,6 +2166,15 @@ document.addEventListener('DOMContentLoaded', () => {
         renderMoveTable();
         updateCapturedPiecesTracker();
         drawEvalGraph();
+
+        // Immediately update evaluation bar with the fixed game review evaluation
+        if (analyzedGame.evalScores && analyzedGame.evalScores[analysisStep] !== null && analyzedGame.evalScores[analysisStep] !== undefined) {
+            const fixedScore = analyzedGame.evalScores[analysisStep];
+            const isMate = Math.abs(fixedScore) >= 10;
+            const scoreStr = fixedScore > 0 ? `+${fixedScore.toFixed(1)}` : fixedScore.toFixed(1);
+            updateEvalBar(scoreStr, isMate);
+        }
+
         if (!skipLiveEval) {
             triggerEngineEvaluation(lastMoveObj);
         } else {
