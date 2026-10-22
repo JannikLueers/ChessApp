@@ -43,6 +43,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const practiceControlsCard = document.getElementById('practice-controls-card');
     const moveHistoryCard = document.getElementById('move-history-card');
 
+    // Mobile Drawer DOM
+    const btnHamburger = document.getElementById('btn-hamburger');
+    const mobileDrawer = document.getElementById('mobile-drawer');
+    const drawerOverlay = document.getElementById('drawer-overlay');
+    const btnCloseDrawer = document.getElementById('btn-close-drawer');
+    const mobileModePill = document.getElementById('mobile-mode-pill');
+    const drawerItems = document.querySelectorAll('.drawer-item');
+
 
     // Controls DOM
     const selectDifficulty = document.getElementById('select-difficulty');
@@ -308,7 +316,65 @@ document.addEventListener('DOMContentLoaded', () => {
     function setActiveTab(activeBtn) {
         [tabPlay, tabAnalysis, tabPuzzles, tabPractice].forEach(btn => btn.classList.remove('active'));
         activeBtn.classList.add('active');
+
+        // Sync mobile mode indicator pill and drawer active selection
+        const id = activeBtn.id;
+        drawerItems.forEach(item => {
+            if (item.getAttribute('data-target') === id) {
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+
+        if (mobileModePill) {
+            if (id === 'tab-play') mobileModePill.textContent = '🎮 Play';
+            else if (id === 'tab-analysis') mobileModePill.textContent = '🔍 Analysis';
+            else if (id === 'tab-puzzles') mobileModePill.textContent = '🧩 Puzzles';
+            else if (id === 'tab-practice') mobileModePill.textContent = '🎓 Practice';
+        }
     }
+
+    function toggleMobileDrawer(open) {
+        if (!mobileDrawer || !drawerOverlay) return;
+        const isOpen = open !== undefined ? open : !mobileDrawer.classList.contains('active');
+        mobileDrawer.classList.toggle('active', isOpen);
+        drawerOverlay.classList.toggle('active', isOpen);
+        if (btnHamburger) btnHamburger.classList.toggle('open', isOpen);
+        mobileDrawer.setAttribute('aria-hidden', String(!isOpen));
+    }
+
+    if (btnHamburger) {
+        btnHamburger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleMobileDrawer();
+        });
+    }
+
+    if (btnCloseDrawer) {
+        btnCloseDrawer.addEventListener('click', () => toggleMobileDrawer(false));
+    }
+
+    if (drawerOverlay) {
+        drawerOverlay.addEventListener('click', () => toggleMobileDrawer(false));
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && mobileDrawer && mobileDrawer.classList.contains('active')) {
+            toggleMobileDrawer(false);
+        }
+    });
+
+    drawerItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const targetId = item.getAttribute('data-target');
+            const targetBtn = document.getElementById(targetId);
+            if (targetBtn) {
+                targetBtn.click();
+            }
+            toggleMobileDrawer(false);
+        });
+    });
 
 
     // --- Board Orientation & Flipped Eval Synchronization ---

@@ -12,6 +12,9 @@ class SoundFX {
     }
 
     playMove() {
+        if (navigator.vibrate) {
+            try { navigator.vibrate(15); } catch (_) {}
+        }
         this.init();
         if (!this.ctx) return;
 
@@ -33,6 +36,9 @@ class SoundFX {
     }
 
     playCapture() {
+        if (navigator.vibrate) {
+            try { navigator.vibrate(30); } catch (_) {}
+        }
         this.init();
         if (!this.ctx) return;
 
@@ -54,6 +60,9 @@ class SoundFX {
     }
 
     playCheck() {
+        if (navigator.vibrate) {
+            try { navigator.vibrate([25, 40, 25]); } catch (_) {}
+        }
         this.init();
         if (!this.ctx) return;
 
@@ -75,6 +84,9 @@ class SoundFX {
     }
 
     playBlunder() {
+        if (navigator.vibrate) {
+            try { navigator.vibrate([60, 50, 60]); } catch (_) {}
+        }
         this.init();
         if (!this.ctx) return;
 

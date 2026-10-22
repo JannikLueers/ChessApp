@@ -1,0 +1,8 @@
+{
+  "appId": "com.jannik.chesscoach",
+  "appName": "Jannik's Chess Coach",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}

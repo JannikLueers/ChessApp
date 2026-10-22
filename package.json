@@ -1,0 +1,21 @@
+{
+  "name": "janniks-chess-coach",
+  "version": "1.0.0",
+  "description": "Jannik's Chess Coach - Mobile & Web Chess App with Stockfish AI and Tactical Puzzles",
+  "main": "index.html",
+  "scripts": {
+    "prepare": "node sync_www.js",
+    "sync": "node sync_www.js && cap sync",
+    "cap:add:android": "cap add android",
+    "cap:open": "cap open android"
+  },
+  "author": "Jannik",
+  "license": "ISC",
+  "devDependencies": {
+    "@capacitor/cli": "^6.0.0"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/core": "^6.0.0"
+  }
+}

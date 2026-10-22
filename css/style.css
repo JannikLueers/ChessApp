@@ -1216,6 +1216,245 @@ main {
     }
 }
 
+/* Mobile Header Actions */
+.mobile-header-actions {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.mobile-mode-pill {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--accent-emerald);
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: 9999px;
+    white-space: nowrap;
+}
+
+.hamburger-btn {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    width: 38px;
+    height: 38px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    border-radius: 8px;
+    padding: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.hamburger-btn:active {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: var(--accent-emerald);
+    transform: scale(0.95);
+}
+
+.hamburger-bar {
+    width: 100%;
+    height: 2.5px;
+    background: #e2e8f0;
+    border-radius: 2px;
+    transition: all 0.25s ease-in-out;
+}
+
+.hamburger-btn.open .hamburger-bar:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+}
+
+.hamburger-btn.open .hamburger-bar:nth-child(2) {
+    opacity: 0;
+    transform: translateX(-8px);
+}
+
+.hamburger-btn.open .hamburger-bar:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+}
+
+/* Mobile Slide-Out Drawer & Backdrop */
+.drawer-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.drawer-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.mobile-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: min(85vw, 340px);
+    height: 100%;
+    background: #0b1120;
+    border-left: 1px solid var(--border-glass);
+    box-shadow: -8px 0 32px rgba(0, 0, 0, 0.85);
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    padding-top: env(safe-area-inset-top, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.mobile-drawer.active {
+    transform: translateX(0);
+}
+
+.drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.1rem 1.25rem;
+    border-bottom: 1px solid var(--border-glass);
+    background: rgba(30, 41, 59, 0.6);
+}
+
+.drawer-title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.drawer-icon {
+    font-size: 1.5rem;
+    color: var(--accent-emerald);
+}
+
+.drawer-app-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+.drawer-subtitle {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn-close-drawer {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-glass);
+    color: var(--text-secondary);
+    border-radius: 8px;
+    width: 34px;
+    height: 34px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.btn-close-drawer:active {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+
+.drawer-nav {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 0.85rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.drawer-item {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.85rem 1rem;
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    color: var(--text-secondary);
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+    width: 100%;
+}
+
+.drawer-item:hover, .drawer-item:active {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+}
+
+.drawer-item.active {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 95, 70, 0.35));
+    border-color: var(--accent-emerald);
+    color: #ffffff;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15);
+}
+
+.drawer-item-icon {
+    font-size: 1.4rem;
+    flex-shrink: 0;
+}
+
+.drawer-item-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.drawer-item-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.drawer-item-sub {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.drawer-footer {
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--border-glass);
+    background: rgba(15, 23, 42, 0.9);
+}
+
+.drawer-footer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.drawer-badge {
+    padding: 2px 6px;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 4px;
+    color: var(--accent-emerald);
+    font-weight: 700;
+    font-size: 0.65rem;
+}
+
 /* Tablets & Mobile Devices (Portrait and Landscape) */
 @media (max-width: 1024px) {
     body {
@@ -1224,28 +1463,23 @@ main {
         overflow-y: auto !important;
     }
 
+    .desktop-nav-tabs {
+        display: none !important;
+    }
+
+    .mobile-header-actions {
+        display: flex !important;
+    }
+
     header {
-        padding: 0.5rem 0.75rem;
-        height: auto;
+        padding: 0.5rem 1rem;
+        height: 52px;
         min-height: 52px;
-        flex-wrap: wrap;
-        gap: 0.5rem;
+        flex-wrap: nowrap;
     }
 
     .logo-group h1 {
         font-size: 1.05rem;
-    }
-
-    .nav-tabs {
-        width: 100%;
-        justify-content: space-between;
-    }
-
-    .tab-btn {
-        flex: 1;
-        justify-content: center;
-        padding: 0.4rem 0.5rem;
-        font-size: 0.78rem;
     }
 
     main {
@@ -1254,21 +1488,23 @@ main {
         height: auto;
         max-height: none;
         overflow: visible !important;
-        padding: 0.75rem 0.75rem 1.5rem 0.75rem;
-        gap: 0.85rem;
+        padding: 0.5rem 0.5rem 1.75rem 0.5rem;
+        gap: 0.75rem;
     }
 
     .board-section {
         width: 100%;
         height: auto;
         max-height: none;
-        padding: 0.65rem;
-        gap: 0.65rem;
+        padding: 0.5rem;
+        gap: 0.5rem;
+        display: flex;
         align-items: center;
+        justify-content: center;
     }
 
     .board-wrapper {
-        width: calc(100% - 28px - 0.65rem);
+        width: calc(100% - 26px - 0.5rem);
         height: auto;
         max-width: 100%;
         max-height: none;
@@ -1277,7 +1513,7 @@ main {
     }
 
     .eval-bar-container {
-        width: 24px;
+        width: 22px;
         height: auto;
         max-height: none;
         align-self: stretch;
@@ -1291,6 +1527,12 @@ main {
         max-height: none;
         overflow: visible;
     }
+
+    .scrubber-btns .btn,
+    .opening-stepper-btns .btn {
+        min-height: 38px;
+        font-size: 0.85rem;
+    }
 }
 
 /* Phones & Small Mobile Screens */
@@ -1299,31 +1541,25 @@ main {
         font-size: 0.95rem;
     }
 
-    .tab-btn {
-        padding: 0.35rem 0.2rem;
-        font-size: 0.72rem;
-        gap: 0.2rem;
-    }
-
     .board-section {
-        padding: 0.45rem;
-        gap: 0.45rem;
+        padding: 0.35rem;
+        gap: 0.35rem;
     }
 
     .board-wrapper {
-        width: calc(100% - 22px - 0.45rem);
+        width: calc(100% - 20px - 0.35rem);
         height: auto;
         aspect-ratio: 1 / 1;
     }
 
     .eval-bar-container {
-        width: 20px;
+        width: 18px;
         height: auto;
         align-self: stretch;
     }
 
     .eval-text {
-        font-size: 0.6rem;
+        font-size: 0.55rem;
     }
 
     .square-label {
@@ -1332,6 +1568,12 @@ main {
 
     .on-piece-badge {
         font-size: 0.85rem;
+    }
+
+    .chessboard, .square, .piece-container {
+        touch-action: manipulation;
+        -webkit-user-select: none;
+        user-select: none;
     }
 }
 
