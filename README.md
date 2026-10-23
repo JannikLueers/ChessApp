@@ -1,12 +1,24 @@
 # ♟ Jannik's Chess Coach & Analysis Suite
 
-A feature-rich, high-performance client-side Web Chess platform and coach built with **Stockfish 10 (WebAssembly / Web Worker)**, **Chess.com Game Importer**, **Sigmoid Win-Probability Move Valuation Engine**, **Opening Theory Recognition**, and an **Interactive Tactical Puzzles Suite**.
+A feature-rich, high-performance Web & Mobile Chess platform and coach built with **Stockfish 10 (WebAssembly / Web Worker)**, **Chess.com Game Importer**, **Sigmoid Win-Probability Move Valuation Engine**, **Opening Theory Recognition**, **Interactive Tactical Puzzles Suite**, and **Native Android App Support (Capacitor)**.
 
 ---
 
 ## 🎮 Play Live
 Play directly in your browser without installation:  
 👉 **[https://JannikLueers.github.io/ChessApp/](https://JannikLueers.github.io/ChessApp/)**
+
+---
+
+## 📱 Mobile App (Android)
+The app is engineered with a single unified codebase that runs as a high-performance web app and a standalone native Android application using **Capacitor**:
+* **Mobile-First Responsive Layout**: Scaled edge-to-edge board centered on portrait screens, with the vertical Stockfish evaluation bar pinned to the left edge.
+* **Hamburger Drawer Menu (☰)**: Safe mode switching between *Play*, *Analysis*, *Puzzles*, and *Practice* via a slide-out drawer, preventing accidental tab presses during gameplay.
+* **Ergonomic Touch Controls**: Touch-friendly move navigation buttons (`|<<`, `<`, `>`, `>>`), interactive evaluation graph, and move lists positioned comfortably below the board.
+* **Haptics & Vibration**: Native vibration feedback on piece moves, captures, checks, and blunders.
+* **Offline-Ready**: Full Stockfish chess engine runs locally on-device without needing an internet connection.
+
+> 📖 **Building the APK**: See [MOBILE_GUIDE.md](MOBILE_GUIDE.md) for step-by-step instructions to build `app-debug.apk` in Android Studio or install directly to your device via USB.
 
 ---
 
