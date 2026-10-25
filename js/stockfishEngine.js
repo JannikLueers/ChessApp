@@ -54,14 +54,18 @@ class StockfishEngine {
         this.send(`go depth ${depth}`);
     }
 
-    getBestMove(fen, depth = 12, callback = null) {
+    getBestMove(fen, depth = 12, callback = null, movetime = null) {
         this.currentEval = { score: "0.0", isMate: false, mateIn: 0, bestMove: null, multipv: [], pvLine: [] };
         this.onBestMoveCallback = callback;
         const parts = fen.split(' ');
         this.evalSideToMove = parts[1] || 'w';
         this.send('stop');
         this.send(`position fen ${fen}`);
-        this.send(`go depth ${depth}`);
+        if (movetime && movetime > 0) {
+            this.send(`go depth ${depth} movetime ${movetime}`);
+        } else {
+            this.send(`go depth ${depth}`);
+        }
     }
 
     handleMessage(msg) {
@@ -113,6 +117,14 @@ class StockfishEngine {
 
             if (this.onEvalCallback) {
                 this.onEvalCallback(this.currentEval);
+            }
+
+            // Terminal positions (checkmate / stalemate) emit "info depth 0 score ..." without a subsequent "bestmove"
+            if (msg.startsWith('info depth 0 ') && this.onBestMoveCallback) {
+                const cb = this.onBestMoveCallback;
+                this.onBestMoveCallback = null;
+                cb(null);
+                return;
             }
         }
 

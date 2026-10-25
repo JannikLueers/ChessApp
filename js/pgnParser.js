@@ -12,9 +12,9 @@ class PgnGameParser {
         }
 
         // Clean move text by stripping annotations, clock tags [%clk...], eval tags [%eval...], and comments
-        let moveText = pgnString.replace(/\[.*?\]/g, ''); // strip headers
-        moveText = moveText.replace(/\{.*?\}/g, '');     // strip comments
-        moveText = moveText.replace(/\(.*?\)/g, '');     // strip variations
+        let moveText = pgnString.replace(/\[[\s\S]*?\]/g, ''); // strip headers and clock/eval tags
+        moveText = moveText.replace(/\{[\s\S]*?\}/g, '');     // strip comments (including multiline)
+        moveText = moveText.replace(/\([\s\S]*?\)/g, '');     // strip variations (including multiline)
         moveText = moveText.replace(/\$\d+/g, '');        // strip NAGs ($1, $2, etc.)
         moveText = moveText.replace(/\d+\.\.\./g, '');    // strip continuation numbers
         moveText = moveText.replace(/\d+\./g, '');       // strip move numbers

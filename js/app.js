@@ -1082,6 +1082,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (gameEvalScores[i] !== undefined && gameEvalScores[i] !== null) {
                     maxEvaluatedStep = i;
                     hasEvaluatedScores = true;
+                } else {
+                    break;
                 }
             }
         } else {
@@ -1538,8 +1540,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Batch Background Stockfish Evaluation across all positions (Depth 14, non-blocking)
     let currentGraphEvalToken = 0;
+    let analysisOverlayTimeout1 = null;
+    let analysisOverlayTimeout2 = null;
+
+    function clearAnalysisOverlayTimeouts() {
+        if (analysisOverlayTimeout1) {
+            clearTimeout(analysisOverlayTimeout1);
+            analysisOverlayTimeout1 = null;
+        }
+        if (analysisOverlayTimeout2) {
+            clearTimeout(analysisOverlayTimeout2);
+            analysisOverlayTimeout2 = null;
+        }
+    }
 
     function showAnalysisProgress(current, total) {
+        clearAnalysisOverlayTimeouts();
         const overlay = document.getElementById('analysis-progress-overlay');
         const textEl = document.getElementById('analysis-progress-text');
         const fillEl = document.getElementById('analysis-progress-fill');
@@ -1552,43 +1568,33 @@ document.addEventListener('DOMContentLoaded', () => {
         textEl.style.color = '#38bdf8';
         fillEl.style.width = `${pct}%`;
         fillEl.style.background = '#38bdf8';
+
+        if (pct >= 100 || current >= total) {
+            analysisOverlayTimeout1 = setTimeout(() => {
+                hideAnalysisProgress();
+            }, 150);
+        }
     }
 
     function hideAnalysisProgress() {
+        clearAnalysisOverlayTimeouts();
         const overlay = document.getElementById('analysis-progress-overlay');
         if (overlay) {
+            overlay.style.opacity = '0';
             overlay.style.display = 'none';
         }
     }
 
-    function showAnalysisComplete() {
-        const overlay = document.getElementById('analysis-progress-overlay');
-        const textEl = document.getElementById('analysis-progress-text');
-        const fillEl = document.getElementById('analysis-progress-fill');
-        if (!overlay || !textEl || !fillEl) return;
-
-        overlay.style.display = 'flex';
-        overlay.style.opacity = '1';
-        textEl.textContent = `✓ Review Ready (Depth 14)`;
-        textEl.style.color = 'var(--accent-emerald, #10b981)';
-        fillEl.style.width = '100%';
-        fillEl.style.background = 'var(--accent-emerald, #10b981)';
-
-        setTimeout(() => {
-            overlay.style.opacity = '0';
-            setTimeout(() => {
-                overlay.style.display = 'none';
-                textEl.style.color = '#38bdf8';
-                fillEl.style.background = '#38bdf8';
-            }, 300);
-        }, 1800);
-    }
-
     function calculateFullGameStockfishGraph(gameObj) {
-        if (!gameObj || !gameObj.moves || gameObj.moves.length === 0) return;
+        if (!gameObj || !gameObj.moves || gameObj.moves.length === 0) {
+            hideAnalysisProgress();
+            return;
+        }
+
+        const totalSteps = gameObj.moves.length; // N moves in the game
 
         // If the game was already fully evaluated, simply load the cached results
-        if (gameObj.isFullyEvaluated && Array.isArray(gameObj.evalScores) && gameObj.evalScores.length === gameObj.moves.length + 1) {
+        if (gameObj.isFullyEvaluated && Array.isArray(gameObj.evalScores) && gameObj.evalScores.length === totalSteps + 1) {
             gameEvalScores = [...gameObj.evalScores];
             const accRes = calculateAccuracyFromEvalScores(gameObj);
             gameObj.accuracy = accRes;
@@ -1603,48 +1609,134 @@ document.addEventListener('DOMContentLoaded', () => {
         const myToken = ++currentGraphEvalToken;
         graphEngine.stop();
 
+        // Build exact N move steps (1 .. N)
         const tempChess = new Chess();
-        const fens = [tempChess.fen()];
-        gameObj.moves.forEach(m => {
+        const moveSteps = [];
+        for (let i = 0; i < totalSteps; i++) {
+            const m = gameObj.moves[i];
             tempChess.move(m.san);
-            fens.push(tempChess.fen());
-        });
+            moveSteps.push({
+                stepIndex: i + 1, // 1 .. N
+                fen: tempChess.fen(),
+                isCheckmate: tempChess.in_checkmate(),
+                isGameOver: tempChess.game_over(),
+                turn: tempChess.turn()
+            });
+        }
 
-        // Initialize with null so the graph cleanly advances from left to right as each move finishes
-        gameObj.evalScores = new Array(fens.length).fill(null);
+        // Step 0 (starting position) is 0.0; steps 1 .. N are populated as each of the N moves is evaluated
+        gameObj.evalScores = new Array(totalSteps + 1).fill(null);
+        gameObj.evalScores[0] = 0;
         gameEvalScores = [...gameObj.evalScores];
         drawEvalGraph();
-        showAnalysisProgress(0, fens.length);
+        showAnalysisProgress(0, totalSteps);
 
-        let idx = 0;
+        let currentStep = 1; // 1 .. N
         let isStepEvaluating = false;
 
-        function evaluateNextFen() {
+        function completeMoveStep(stepIdx, numScore, scoreStr, isMate) {
+            try {
+                gameObj.evalScores[stepIdx] = numScore;
+                if (analyzedGame === gameObj) {
+                    gameEvalScores[stepIdx] = numScore;
+                    const liveAcc = calculateAccuracyFromEvalScores(gameObj);
+                    gameObj.accuracy = liveAcc;
+                    if (whiteAccuracyVal) whiteAccuracyVal.textContent = `${liveAcc.white}%`;
+                    if (blackAccuracyVal) blackAccuracyVal.textContent = `${liveAcc.black}%`;
+
+                    // Update graph for stepIdx
+                    drawEvalGraph();
+
+                    if (analysisStep === stepIdx) {
+                        updateEvalBar(scoreStr, isMate);
+                    }
+                    if (stepIdx % 4 === 0 || stepIdx === totalSteps) {
+                        renderMoveTable();
+                    }
+                }
+            } catch (err) {
+                console.warn('Error updating evaluation step:', err);
+            }
+
+            // Update progress for stepIdx out of N totalSteps
+            showAnalysisProgress(stepIdx, totalSteps);
+
+            // If evaluation N is done, finalize and hide the progress box
+            if (stepIdx >= totalSteps) {
+                gameObj.isFullyEvaluated = true;
+                try {
+                    const accRes = calculateAccuracyFromEvalScores(gameObj);
+                    gameObj.accuracy = accRes;
+                    if (whiteAccuracyVal) whiteAccuracyVal.textContent = `${gameObj.accuracy.white}%`;
+                    if (blackAccuracyVal) blackAccuracyVal.textContent = `${gameObj.accuracy.black}%`;
+                    saveGamesToStorage(savedGames);
+                    drawEvalGraph();
+                    renderMoveTable();
+                } catch (err) {
+                    console.warn('Error finalizing game evaluation:', err);
+                }
+                isStepEvaluating = false;
+                hideAnalysisProgress();
+                return;
+            }
+
+            currentStep = stepIdx + 1;
+            isStepEvaluating = false;
+            setTimeout(evaluateNextMoveStep, 15);
+        }
+
+        function evaluateNextMoveStep() {
             if (isStepEvaluating) return;
             if (myToken !== currentGraphEvalToken || !analyzedGame || analyzedGame !== gameObj) {
                 hideAnalysisProgress();
                 return;
             }
 
-            if (idx >= fens.length) {
-                gameObj.isFullyEvaluated = true;
-                const accRes = calculateAccuracyFromEvalScores(gameObj);
-                gameObj.accuracy = accRes;
-                if (whiteAccuracyVal) whiteAccuracyVal.textContent = `${gameObj.accuracy.white}%`;
-                if (blackAccuracyVal) blackAccuracyVal.textContent = `${gameObj.accuracy.black}%`;
-                saveGamesToStorage(savedGames);
-                drawEvalGraph();
-                renderMoveTable();
-                showAnalysisComplete();
+            if (currentStep > totalSteps) {
+                hideAnalysisProgress();
                 return;
             }
 
             isStepEvaluating = true;
-            const targetIdx = idx;
-            const fen = fens[targetIdx];
+            const stepIdx = currentStep; // 1 .. N
+            const stepInfo = moveSteps[stepIdx - 1];
 
-            // Evaluate in background at maximum depth 14
-            graphEngine.getBestMove(fen, 14, () => {
+            // Terminal positions (checkmate / stalemate / draw) at move N
+            if (stepInfo.isGameOver) {
+                let termScore = 0;
+                let termStr = "0.0";
+                let termMate = false;
+                if (stepInfo.isCheckmate) {
+                    termScore = (stepInfo.turn === 'w') ? -10 : 10;
+                    termStr = (stepInfo.turn === 'w') ? "#-1" : "#1";
+                    termMate = true;
+                }
+                completeMoveStep(stepIdx, termScore, termStr, termMate);
+                return;
+            }
+
+            let stepCompleted = false;
+            const stepFallbackTimer = setTimeout(() => {
+                if (stepCompleted) return;
+                stepCompleted = true;
+                if (myToken !== currentGraphEvalToken || analyzedGame !== gameObj) {
+                    isStepEvaluating = false;
+                    hideAnalysisProgress();
+                    return;
+                }
+                const fallbackStr = graphEngine.currentEval.score || "0.0";
+                let fallbackNum = parseFloat(fallbackStr) || 0;
+                if (graphEngine.currentEval.isMate) {
+                    fallbackNum = fallbackStr.includes('-') ? -10 : 10;
+                }
+                completeMoveStep(stepIdx, fallbackNum, fallbackStr, !!graphEngine.currentEval.isMate);
+            }, 1200);
+
+            graphEngine.getBestMove(stepInfo.fen, 14, () => {
+                if (stepCompleted) return;
+                stepCompleted = true;
+                clearTimeout(stepFallbackTimer);
+
                 if (myToken !== currentGraphEvalToken || analyzedGame !== gameObj) {
                     isStepEvaluating = false;
                     hideAnalysisProgress();
@@ -1657,32 +1749,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     numScore = scoreStr.includes('-') ? -10 : 10;
                 }
 
-                gameObj.evalScores[targetIdx] = numScore;
-                if (analyzedGame === gameObj) {
-                    gameEvalScores[targetIdx] = numScore;
-                    const liveAcc = calculateAccuracyFromEvalScores(gameObj);
-                    gameObj.accuracy = liveAcc;
-                    if (whiteAccuracyVal) whiteAccuracyVal.textContent = `${liveAcc.white}%`;
-                    if (blackAccuracyVal) blackAccuracyVal.textContent = `${liveAcc.black}%`;
-                    // Redraw graph progressively WITHOUT moving the board or changing analysisStep
-                    drawEvalGraph();
-                    // If user is currently looking at this move, update eval bar immediately
-                    if (analysisStep === targetIdx) {
-                        updateEvalBar(scoreStr, graphEngine.currentEval.isMate);
-                    }
-                    if (targetIdx % 4 === 0) {
-                        renderMoveTable();
-                    }
-                }
-
-                idx++;
-                showAnalysisProgress(idx, fens.length);
-                isStepEvaluating = false;
-                setTimeout(evaluateNextFen, 20);
-            });
+                completeMoveStep(stepIdx, numScore, scoreStr, graphEngine.currentEval.isMate);
+            }, 250);
         }
 
-        evaluateNextFen();
+        evaluateNextMoveStep();
     }
 
     function loadAnalyzedGame(gameObj) {
@@ -1705,6 +1776,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         gameObj.evalScores = new Array(gameObj.moves.length + 1).fill(null);
+        gameObj.evalScores[0] = 0;
         gameEvalScores = [...gameObj.evalScores];
 
         jumpToAnalysisStep(0);
