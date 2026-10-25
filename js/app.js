@@ -272,6 +272,13 @@ document.addEventListener('DOMContentLoaded', () => {
         practiceIsActive = false;
         isOpeningPracticeActive = false;
         stopOpeningAutoPlay();
+        // Hide eval bar and player banner card in puzzles mode
+        const evalBar = document.querySelector('.eval-bar-container');
+        if (evalBar) evalBar.style.display = 'none';
+        const boardSection = document.querySelector('.board-section');
+        if (boardSection) boardSection.classList.add('puzzle-fullboard');
+        const playerBannerCard = document.getElementById('player-banner-card');
+        if (playerBannerCard) playerBannerCard.style.display = 'none';
         loadNextPuzzle();
     });
 
@@ -313,8 +320,22 @@ document.addEventListener('DOMContentLoaded', () => {
         renderPracticeScenarioList(practiceCurrentCategory);
     });
 
+    function restoreFromPuzzleMode() {
+        // Restore eval bar and player banner when leaving puzzles mode
+        const evalBar = document.querySelector('.eval-bar-container');
+        if (evalBar) evalBar.style.display = '';
+        const boardSection = document.querySelector('.board-section');
+        if (boardSection) boardSection.classList.remove('puzzle-fullboard');
+        const playerBannerCard = document.getElementById('player-banner-card');
+        if (playerBannerCard) playerBannerCard.style.display = '';
+    }
+
     function setActiveTab(activeBtn) {
         [tabPlay, tabAnalysis, tabPuzzles, tabPractice].forEach(btn => btn.classList.remove('active'));
+        // If leaving puzzles, restore hidden elements
+        if (activeBtn !== tabPuzzles) {
+            restoreFromPuzzleMode();
+        }
         activeBtn.classList.add('active');
 
         // Sync mobile mode indicator pill and drawer active selection
@@ -575,13 +596,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (chess.turn() !== playerColor) return;
 
 
-        if (selectedSquare === sqName && wasSelectedBeforePickup) {
+        if (selectedSquare === sqName) {
             selectedSquare = null;
             wasSelectedBeforePickup = false;
             updateUI();
-            return;
-        }
-        if (selectedSquare === sqName && !wasSelectedBeforePickup) {
             return;
         }
 
@@ -617,13 +635,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleAnalysisSquareClick(sqName) {
         if (!analyzedGame) return;
 
-        if (selectedSquare === sqName && wasSelectedBeforePickup) {
+        if (selectedSquare === sqName) {
             selectedSquare = null;
             wasSelectedBeforePickup = false;
             updateAnalysisBoardView();
-            return;
-        }
-        if (selectedSquare === sqName && !wasSelectedBeforePickup) {
             return;
         }
 
@@ -2353,10 +2368,6 @@ document.addEventListener('DOMContentLoaded', () => {
             else if (blunderMoveObj && blunderMoveObj.captured) sounds.playCapture();
             else sounds.playMove();
 
-            // Highlight the opponent blunder with a red arrow
-            boardRenderer.clearArrows();
-            boardRenderer.drawArrow(bFrom, bTo, '#ef4444', 10);
-
             // Turn is now the solver's turn
             puzzleManager.moveIndex = 1;
             isPuzzleLocked = false;
@@ -2547,13 +2558,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handlePuzzleSquareClick(sqName) {
         if (isPuzzleLocked) return;
-        if (selectedSquare === sqName && wasSelectedBeforePickup) {
+        // Clicking the selected piece again always deselects it
+        if (selectedSquare === sqName) {
             selectedSquare = null;
             wasSelectedBeforePickup = false;
             updateUI();
-            return;
-        }
-        if (selectedSquare === sqName && !wasSelectedBeforePickup) {
             return;
         }
 
@@ -2631,9 +2640,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     else if (replyMoveObj && replyMoveObj.captured) sounds.playCapture();
                     else sounds.playMove();
 
-                    // Highlight opponent's reply with blue arrow
-                    boardRenderer.clearArrows();
-                    boardRenderer.drawArrow(rFrom, rTo, '#3b82f6', 8);
                     isPuzzleLocked = false;
                     updateUI();
                 }, 400);
@@ -3648,13 +3654,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleOpeningSquareClick(sqName) {
         if (!isOpeningPracticeActive || !activeOpeningScenario) return;
 
-        if (selectedSquare === sqName && wasSelectedBeforePickup) {
+        // Clicking the selected piece again always deselects it
+        if (selectedSquare === sqName) {
             selectedSquare = null;
             wasSelectedBeforePickup = false;
             updateUI();
             return;
         }
-        if (selectedSquare === sqName && !wasSelectedBeforePickup) return;
 
         if (selectedSquare) {
             if (isLegalMove(selectedSquare, sqName)) {
@@ -4020,13 +4026,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handlePracticeSquareClick(sqName) {
-        if (selectedSquare === sqName && wasSelectedBeforePickup) {
+        // Clicking the selected piece again always deselects it
+        if (selectedSquare === sqName) {
             selectedSquare = null;
             wasSelectedBeforePickup = false;
             updateUI();
             return;
         }
-        if (selectedSquare === sqName && !wasSelectedBeforePickup) return;
 
         if (selectedSquare) {
             if (isLegalMove(selectedSquare, sqName)) {

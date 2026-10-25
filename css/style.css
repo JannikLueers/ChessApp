@@ -1458,9 +1458,11 @@ main {
 /* Tablets & Mobile Devices (Portrait and Landscape) */
 @media (max-width: 1024px) {
     body {
-        height: auto;
-        min-height: 100vh;
-        overflow-y: auto !important;
+        height: 100dvh;
+        min-height: 100dvh;
+        overflow: hidden !important;
+        display: flex;
+        flex-direction: column;
     }
 
     .desktop-nav-tabs {
@@ -1475,6 +1477,7 @@ main {
         padding: 0.5rem 1rem;
         height: 52px;
         min-height: 52px;
+        flex-shrink: 0;
         flex-wrap: nowrap;
     }
 
@@ -1483,32 +1486,42 @@ main {
     }
 
     main {
+        flex: 1 1 0;
+        min-height: 0;
         display: flex;
         flex-direction: column;
-        height: auto;
-        max-height: none;
-        overflow: visible !important;
-        padding: 0.5rem 0.5rem 1.75rem 0.5rem;
-        gap: 0.75rem;
+        height: calc(100dvh - 52px);
+        max-height: calc(100dvh - 52px);
+        overflow: hidden !important;
+        padding: 0.4rem 0.4rem 0.4rem 0.4rem;
+        gap: 0.4rem;
     }
 
+    /* Board section: static, non-scrollable at top */
     .board-section {
         width: 100%;
-        height: auto;
-        max-height: none;
-        padding: 0.5rem;
-        gap: 0.5rem;
+        height: auto !important;
+        max-height: none !important;
+        flex-shrink: 0;
+        padding: 0.25rem 0.35rem;
+        gap: 0.35rem;
         display: flex;
         align-items: center;
         justify-content: center;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
     }
 
+    /* Board wrapper: guaranteed square, max size while leaving >= 260px for controls */
     .board-wrapper {
-        width: calc(100% - 26px - 0.5rem);
-        height: auto;
+        width: min(calc(100vw - 0.7rem - 22px - 0.35rem), calc(100dvh - 52px - 260px));
         max-width: 100%;
-        max-height: none;
-        aspect-ratio: 1 / 1;
+        height: auto !important;
+        max-height: none !important;
+        aspect-ratio: 1 / 1 !important;
         flex-shrink: 0;
     }
 
@@ -1519,19 +1532,50 @@ main {
         align-self: stretch;
     }
 
+    /* Panel section: scrollable internally, takes remaining space */
     .panel-section {
+        flex: 1 1 auto;
+        min-height: 0;
         width: 100%;
         min-width: 0;
         max-width: 100%;
         height: auto;
         max-height: none;
-        overflow: visible;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        padding-bottom: 0.75rem;
+    }
+
+    .panel-section .card {
+        padding: 0.5rem 0.65rem;
+        border-radius: var(--radius-sm);
     }
 
     .scrubber-btns .btn,
     .opening-stepper-btns .btn {
         min-height: 38px;
         font-size: 0.85rem;
+    }
+
+    /* Puzzle fullboard mode: board uses full available width (no eval bar) while strictly preserving 1:1 aspect ratio */
+    .board-section.puzzle-fullboard {
+        padding: 0.25rem 0;
+    }
+
+    .board-section.puzzle-fullboard .board-wrapper {
+        width: min(100vw, calc(100dvh - 52px - 220px));
+        max-width: 100vw;
+        height: auto !important;
+        max-height: none !important;
+        aspect-ratio: 1 / 1 !important;
+    }
+
+    .board-section.puzzle-fullboard .eval-bar-container {
+        display: none !important;
     }
 }
 
@@ -1542,20 +1586,27 @@ main {
     }
 
     .board-section {
-        padding: 0.35rem;
-        gap: 0.35rem;
+        padding: 0.15rem 0.25rem;
+        gap: 0.25rem;
     }
 
     .board-wrapper {
-        width: calc(100% - 20px - 0.35rem);
-        height: auto;
-        aspect-ratio: 1 / 1;
+        width: min(calc(100vw - 0.5rem - 18px - 0.25rem), calc(100dvh - 52px - 260px));
+        height: auto !important;
+        aspect-ratio: 1 / 1 !important;
     }
 
     .eval-bar-container {
         width: 18px;
         height: auto;
         align-self: stretch;
+    }
+
+    .board-section.puzzle-fullboard .board-wrapper {
+        width: min(100vw, calc(100dvh - 52px - 220px));
+        max-width: 100vw;
+        height: auto !important;
+        aspect-ratio: 1 / 1 !important;
     }
 
     .eval-text {
@@ -1574,6 +1625,69 @@ main {
         touch-action: manipulation;
         -webkit-user-select: none;
         user-select: none;
+    }
+
+    .player-banner {
+        height: 34px;
+        min-height: 34px;
+        max-height: 34px;
+        padding: 0.2rem 0.45rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .player-avatar {
+        width: 22px;
+        height: 22px;
+        font-size: 0.65rem;
+    }
+}
+
+/* ==========================================================================
+   PUZZLE FILTER DETAILS/SUMMARY COLLAPSIBLE
+   ========================================================================== */
+
+#puzzle-filter-details > summary {
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+    padding: 0.3rem 0.4rem;
+    background: rgba(15, 23, 42, 0.4);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+    user-select: none;
+    transition: background 0.15s ease;
+}
+
+#puzzle-filter-details > summary:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+#puzzle-filter-details[open] > summary {
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+#puzzle-filter-details > div {
+    border: 1px solid var(--border-glass);
+    border-top: none;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    padding: 0.4rem;
+    background: rgba(10, 15, 28, 0.5);
+}
+
+@media (min-width: 1025px) {
+    /* Puzzle fullboard (puzzles mode) — desktop clean styling */
+    .board-section.puzzle-fullboard {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        padding: 0.75rem 1rem;
+    }
+
+    .board-section.puzzle-fullboard .board-wrapper {
+        width: min(100%, calc(100vh - 106px));
+        height: min(100%, calc(100vh - 106px));
+        aspect-ratio: 1 / 1;
     }
 }
 

@@ -11,14 +11,24 @@ Play directly in your browser without installation:
 ---
 
 ## 📱 Mobile App (Android)
-The app is engineered with a single unified codebase that runs as a high-performance web app and a standalone native Android application using **Capacitor**:
-* **Mobile-First Responsive Layout**: Scaled edge-to-edge board centered on portrait screens, with the vertical Stockfish evaluation bar pinned to the left edge.
+Download and install the standalone native Android application directly to your phone:  
+👉 **[📲 Download app-debug.apk](https://github.com/JannikLueers/ChessApp/raw/master/app-debug.apk)** *(Latest Build v2.8, ~4.4 MB)*
+
+> 💡 **Quick Install on Android**:
+> 1. Tap the link above on your phone to download `app-debug.apk`.
+> 2. Open the downloaded file from your notifications or Downloads folder.
+> 3. If prompted by Android, allow "Install unknown apps" for your browser, then tap **Install**.
+> 4. Launch **Jannik's Chess Coach** and enjoy offline Stockfish play and tactical puzzles!
+
+The app is engineered with a single unified codebase using **Capacitor**:
+* **Mobile-First Responsive Layout**: Square board optimized for mobile portrait screens, with the vertical Stockfish evaluation bar and seamless controls.
+* **Full-Screen Tactical Puzzles**: Edge-to-edge square board without eval bar distractions, collapsible theme/rating filters, and one-tap retry.
 * **Hamburger Drawer Menu (☰)**: Safe mode switching between *Play*, *Analysis*, *Puzzles*, and *Practice* via a slide-out drawer, preventing accidental tab presses during gameplay.
-* **Ergonomic Touch Controls**: Touch-friendly move navigation buttons (`|<<`, `<`, `>`, `>>`), interactive evaluation graph, and move lists positioned comfortably below the board.
+* **Ergonomic Touch Controls**: Tap a piece again to deselect, move navigation buttons (`|<<`, `<`, `>`, `>>`), interactive evaluation graph, and move lists positioned comfortably below the board.
 * **Haptics & Vibration**: Native vibration feedback on piece moves, captures, checks, and blunders.
 * **Offline-Ready**: Full Stockfish chess engine runs locally on-device without needing an internet connection.
 
-> 📖 **Building the APK**: See [MOBILE_GUIDE.md](MOBILE_GUIDE.md) for step-by-step instructions to build `app-debug.apk` in Android Studio or install directly to your device via USB.
+> 📖 **Developer Build Guide**: See [MOBILE_GUIDE.md](MOBILE_GUIDE.md) for step-by-step instructions to compile from source in Android Studio or debug via USB.
 
 ---
 

@@ -10,7 +10,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <link rel="stylesheet" href="css/style.css?v=2.3">
+    <link rel="stylesheet" href="css/style.css?v=2.5">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -94,7 +94,7 @@
         <div class="drawer-footer">
             <div class="drawer-footer-row">
                 <span>Stockfish 10 • Offline Ready</span>
-                <span class="drawer-badge">v2.6 Mobile</span>
+                <span class="drawer-badge">v2.8 Mobile</span>
             </div>
         </div>
     </aside>
@@ -133,7 +133,7 @@
         <section class="panel-section">
             
             <!-- Game Status & Player Banner with Captured Pieces Summary -->
-            <div class="card">
+            <div id="player-banner-card" class="card">
                 <div id="turn-indicator" style="font-size: 0.75rem; font-weight: 700; text-align: center; margin-bottom: 0.4rem; color: var(--accent-emerald);">WHITE'S TURN</div>
                 <div class="player-banner">
                     <div class="player-main-info">
@@ -263,89 +263,96 @@
 
             <!-- Puzzles Mode Toolbar (Active in Puzzles Mode) -->
             <div id="puzzles-controls-card" class="card" style="display: none;">
-                <div class="card-title">
-                    <span>🧩 Puzzle Mode</span>
-                    <span id="puzzle-score-badge" style="font-size: 0.75rem; color: var(--accent-emerald); font-weight: 700;">Solved: 0 | Failed: 0</span>
+                <!-- Compact header row: score + next puzzle button -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span id="puzzle-score-badge" style="font-size: 0.78rem; color: var(--accent-emerald); font-weight: 700;">Solved: 0 | Failed: 0</span>
+                    <div style="display: flex; gap: 0.35rem;">
+                        <button id="btn-puzzle-hint" class="btn btn-sm" style="min-height: 30px;">💡 Hint</button>
+                        <button id="btn-next-puzzle" class="btn btn-primary btn-sm" style="min-height: 30px;">⏭ Next</button>
+                    </div>
                 </div>
 
-                <!-- Theme Filter (Lichess Themes) -->
-                <div style="margin-bottom: 0.4rem;">
-                    <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 3px;">🏷️ Theme</label>
-                    <select id="select-puzzle-category" class="select-field">
-                        <option value="mixed" selected>🎲 Healthy Mix (All Themes)</option>
-                        <optgroup label="── Checkmates ──">
-                            <option value="mateIn1">Mate in 1</option>
-                            <option value="mateIn2">Mate in 2</option>
-                            <option value="mateIn3">Mate in 3</option>
-                            <option value="backRankMate">Back Rank Mate</option>
-                            <option value="smotheredMate">Smothered Mate</option>
-                            <option value="arabianMate">Arabian Mate</option>
-                            <option value="bodenMate">Boden's Mate</option>
-                            <option value="cornerMate">Corner Mate</option>
-                        </optgroup>
-                        <optgroup label="── Motifs ──">
-                            <option value="fork">Fork</option>
-                            <option value="pin">Pin</option>
-                            <option value="skewer">Skewer</option>
-                            <option value="discoveredAttack">Discovered Attack</option>
-                            <option value="discoveredCheck">Discovered Check</option>
-                            <option value="doubleCheck">Double Check</option>
-                            <option value="deflection">Deflection</option>
-                            <option value="attraction">Attraction</option>
-                            <option value="sacrifice">Sacrifice</option>
-                            <option value="hangingPiece">Hanging Piece</option>
-                            <option value="clearance">Clearance</option>
-                            <option value="intermezzo">Intermezzo</option>
-                            <option value="quietMove">Quiet Move</option>
-                            <option value="xRayAttack">X-Ray Attack</option>
-                            <option value="trappedPiece">Trapped Piece</option>
-                        </optgroup>
-                        <optgroup label="── Attacks ──">
-                            <option value="kingsideAttack">Kingside Attack</option>
-                            <option value="queensideAttack">Queenside Attack</option>
-                            <option value="exposedKing">Exposed King</option>
-                            <option value="advancedPawn">Advanced Pawn</option>
-                        </optgroup>
-                        <optgroup label="── Game Phase ──">
-                            <option value="opening">Opening</option>
-                            <option value="endgame">Endgame</option>
-                            <option value="pawnEndgame">Pawn Endgame</option>
-                            <option value="rookEndgame">Rook Endgame</option>
-                            <option value="knightEndgame">Knight Endgame</option>
-                            <option value="queenEndgame">Queen Endgame</option>
-                        </optgroup>
-                        <optgroup label="── Special Moves ──">
-                            <option value="promotion">Promotion</option>
-                            <option value="underPromotion">Underpromotion</option>
-                            <option value="enPassant">En Passant</option>
-                            <option value="zugzwang">Zugzwang</option>
-                            <option value="defensiveMove">Defensive Move</option>
-                        </optgroup>
-                    </select>
-                </div>
+                <!-- Collapsible filter row -->
+                <details id="puzzle-filter-details" style="margin-bottom: 0.35rem;">
+                    <summary style="font-size: 0.72rem; color: var(--text-muted); cursor: pointer; padding: 0.2rem 0; list-style: none; display: flex; align-items: center; gap: 0.35rem;">
+                        <span style="font-size: 0.8rem;">⚙️</span> <span>Filter: Theme & Rating</span>
+                        <span style="margin-left: auto; font-size: 0.65rem; opacity: 0.6;">▼</span>
+                    </summary>
+                    <div style="margin-top: 0.4rem; display: flex; flex-direction: column; gap: 0.35rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem;">
+                            <div>
+                                <label style="font-size: 0.65rem; color: var(--text-muted); display: block; margin-bottom: 2px;">🏷️ Theme</label>
+                                <select id="select-puzzle-category" class="select-field" style="font-size: 0.75rem; padding: 0.3rem 0.4rem;">
+                                    <option value="mixed" selected>🎲 All Themes</option>
+                                    <optgroup label="── Checkmates ──">
+                                        <option value="mateIn1">Mate in 1</option>
+                                        <option value="mateIn2">Mate in 2</option>
+                                        <option value="mateIn3">Mate in 3</option>
+                                        <option value="backRankMate">Back Rank</option>
+                                        <option value="smotheredMate">Smothered</option>
+                                        <option value="arabianMate">Arabian</option>
+                                        <option value="bodenMate">Boden's</option>
+                                        <option value="cornerMate">Corner</option>
+                                    </optgroup>
+                                    <optgroup label="── Motifs ──">
+                                        <option value="fork">Fork</option>
+                                        <option value="pin">Pin</option>
+                                        <option value="skewer">Skewer</option>
+                                        <option value="discoveredAttack">Discovered Attack</option>
+                                        <option value="discoveredCheck">Discovered Check</option>
+                                        <option value="doubleCheck">Double Check</option>
+                                        <option value="deflection">Deflection</option>
+                                        <option value="attraction">Attraction</option>
+                                        <option value="sacrifice">Sacrifice</option>
+                                        <option value="hangingPiece">Hanging Piece</option>
+                                        <option value="clearance">Clearance</option>
+                                        <option value="intermezzo">Intermezzo</option>
+                                        <option value="quietMove">Quiet Move</option>
+                                        <option value="xRayAttack">X-Ray Attack</option>
+                                        <option value="trappedPiece">Trapped Piece</option>
+                                    </optgroup>
+                                    <optgroup label="── Attacks ──">
+                                        <option value="kingsideAttack">Kingside Attack</option>
+                                        <option value="queensideAttack">Queenside Attack</option>
+                                        <option value="exposedKing">Exposed King</option>
+                                        <option value="advancedPawn">Advanced Pawn</option>
+                                    </optgroup>
+                                    <optgroup label="── Game Phase ──">
+                                        <option value="opening">Opening</option>
+                                        <option value="endgame">Endgame</option>
+                                        <option value="pawnEndgame">Pawn Endgame</option>
+                                        <option value="rookEndgame">Rook Endgame</option>
+                                        <option value="knightEndgame">Knight Endgame</option>
+                                        <option value="queenEndgame">Queen Endgame</option>
+                                    </optgroup>
+                                    <optgroup label="── Special ──">
+                                        <option value="promotion">Promotion</option>
+                                        <option value="underPromotion">Underpromotion</option>
+                                        <option value="enPassant">En Passant</option>
+                                        <option value="zugzwang">Zugzwang</option>
+                                        <option value="defensiveMove">Defensive Move</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="font-size: 0.65rem; color: var(--text-muted); display: block; margin-bottom: 2px;">⭐ Rating</label>
+                                <select id="select-puzzle-rating" class="select-field" style="font-size: 0.75rem; padding: 0.3rem 0.4rem;">
+                                    <option value="800_1100">Beginner (800–1100)</option>
+                                    <option value="1100_1400" selected>Intermediate (1100–1400)</option>
+                                    <option value="1400_1700">Advanced (1400–1700)</option>
+                                    <option value="1700_2000">Expert (1700–2000)</option>
+                                    <option value="2000_3000">Master (2000+)</option>
+                                    <option value="0_3000">All Ratings</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button id="btn-puzzle-history" class="btn" style="width: 100%; font-size: 0.75rem; padding: 0.3rem;">📊 Puzzle Progress</button>
+                    </div>
+                </details>
 
-                <!-- Rating Range Filter -->
-                <div style="margin-bottom: 0.4rem;">
-                    <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 3px;">⭐ Rating Range</label>
-                    <select id="select-puzzle-rating" class="select-field">
-                        <option value="800_1100">Beginner (800–1100)</option>
-                        <option value="1100_1400" selected>Intermediate (1100–1400)</option>
-                        <option value="1400_1700">Advanced (1400–1700)</option>
-                        <option value="1700_2000">Expert (1700–2000)</option>
-                        <option value="2000_3000">Master (2000+)</option>
-                        <option value="0_3000">All Ratings</option>
-                    </select>
-                </div>
-
-                <div class="control-grid">
-                    <button id="btn-next-puzzle" class="btn btn-primary">⏭ Next Puzzle</button>
-                    <button id="btn-puzzle-hint" class="btn">💡 Get Hint</button>
-                </div>
-                <button id="btn-puzzle-history" class="btn" style="width: 100%; margin-top: 0.5rem;">📊 Puzzle Progress Overview</button>
-
-                <div id="puzzle-feedback" class="recommendation-box" style="background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3);">
+                <div id="puzzle-feedback" class="recommendation-box" style="background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3); margin-top: 0; padding: 0.5rem 0.6rem;">
                     <!-- Lichess ID badge -->
-                    <div id="puzzle-lichess-badge" style="font-size: 0.65rem; color: var(--text-muted); margin-bottom: 3px; display: none;">
+                    <div id="puzzle-lichess-badge" style="font-size: 0.62rem; color: var(--text-muted); margin-bottom: 3px; display: none;">
                         🔗 Lichess ID: <a id="puzzle-lichess-id-link" href="#" target="_blank" style="font-family: monospace; color: var(--accent-emerald); text-decoration: none;"></a>
                         &nbsp;·&nbsp; ⭐ <span id="puzzle-rating-display"></span>
                     </div>
@@ -696,7 +703,7 @@
     <script src="js/puzzles.js?v=2.3"></script>
     <script src="js/audio.js?v=2.3"></script>
     <script src="js/practice.js?v=2.6"></script>
-    <script src="js/app.js?v=2.6"></script>
+    <script src="js/app.js?v=2.8"></script>
 
 </body>
 </html>
