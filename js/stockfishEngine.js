@@ -163,10 +163,10 @@ class StockfishEngine {
         let currWinProb = isWhiteTurn ? currWinProbWhite : (1 - currWinProbWhite);
         let drop = Math.max(0, prevWinProb - currWinProb);
 
-        // 1. Opening Book / Theory Check
+        // 1. Opening Book / Theory Check (only for moves that are actively in theory book)
         if (movesHistory && movesHistory.length > 0 && typeof OpeningTheory !== 'undefined') {
             const theory = OpeningTheory.getTheoryAtStep(movesHistory);
-            if (theory && drop <= 0.10) {
+            if (theory && theory.isTheory && drop <= 0.10) {
                 return {
                     label: theory.fullLabel,
                     badgeClass: 'badge-theory',

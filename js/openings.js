@@ -199,10 +199,13 @@ class OpeningTheory {
             return 1;
         });
 
-        const bestMatch = candidateMatches[0].opening;
+        const bestCandidate = candidateMatches[0];
+        const bestMatch = bestCandidate.opening;
+        const isCurrentMoveTheory = (bestCandidate.type === 'in_progress');
 
         return {
-            isTheory: true,
+            isTheory: isCurrentMoveTheory,
+            isPastBook: !isCurrentMoveTheory,
             openingName: bestMatch.name,
             eco: bestMatch.eco,
             fullLabel: `Theory - ${bestMatch.name}`

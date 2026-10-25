@@ -3837,7 +3837,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (matchedBranch) {
             if (openingTheoryStatus) openingTheoryStatus.textContent = `🎯 Theory Response: ${matchedBranch.name} (${moveObj.san})`;
             if (openingTheoryDesc)   openingTheoryDesc.textContent = (matchedBranch.note ? matchedBranch.note + ' ' : '') + (theoryReply ? `Theory recommends: ${theoryReply}.` : '');
-        } else if (theory) {
+        } else if (theory && theory.isTheory) {
             if (openingTheoryStatus) openingTheoryStatus.textContent = `📘 Theory Recognized: ${theory.openingName} (${moveObj.san})`;
             if (openingTheoryDesc)   openingTheoryDesc.textContent = `Opponent played ${moveObj.san}. ${theoryReply ? `Standard theoretical response: ${theoryReply}.` : 'Continue with sound positional principles.'}`;
         } else {
