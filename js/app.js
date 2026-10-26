@@ -1856,7 +1856,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     `Stockfish optimal variation starting from Move ${startStep}.`
             });
 
-            for (let i = 0; i < pvMoves.length && i < 6; i++) {
+            for (let i = 0; i < pvMoves.length && i < 10; i++) {
                 const uciMove = pvMoves[i];
                 const from = uciMove.substring(0, 2);
                 const to = uciMove.substring(2, 4);
@@ -1889,14 +1889,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
+            const prevIndex = (simulationState && simulationState.active && simulationState.startAnalysisStep === startStep) ? simulationState.currentIndex : 0;
             simulationState = {
                 active: true,
                 startAnalysisStep: startStep,
-                currentIndex: 0,
+                currentIndex: Math.min(prevIndex, simLine.length - 1),
                 line: simLine
             };
 
-            renderSimulationStep(0);
+            renderSimulationStep(simulationState.currentIndex);
         });
     }
 
