@@ -3858,3 +3858,260 @@ class PuzzleManager {
     }
 }
 
+// =============================================================
+// PuzzleStormEngine Class — Dynamic Progressive Speed Mode
+// =============================================================
+class PuzzleStormEngine {
+    constructor(puzzleDatabase = PUZZLE_DATABASE) {
+        this.puzzles = puzzleDatabase;
+        this.durationMinutes = 3;
+        this.timeRemaining = 180;
+        this.maxHearts = 5;
+        this.hearts = 5;
+        this.score = 0;
+        this.streak = 0;
+        this.bestStreak = 0;
+        this.mistakes = 0;
+        this.attempted = 0;
+        this.isActive = false;
+        this.currentPuzzle = null;
+        this.moveIndex = 0;
+        this.highScores = this.loadHighScores();
+        this.tierDecks = {};
+        this.currentTierLevel = 1;
+    }
+
+    loadHighScores() {
+        try {
+            if (typeof localStorage !== 'undefined') {
+                const raw = localStorage.getItem('chessapp_storm_highscores');
+                if (raw) return JSON.parse(raw);
+            }
+        } catch (e) {
+            console.warn('Failed reading storm highscores from storage:', e);
+        }
+        return { 3: 0, 5: 0 };
+    }
+
+    saveHighScores() {
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('chessapp_storm_highscores', JSON.stringify(this.highScores));
+            }
+        } catch (e) {
+            console.warn('Failed saving storm highscores to storage:', e);
+        }
+    }
+
+    getHighScore(duration = this.durationMinutes) {
+        return this.highScores[duration] || 0;
+    }
+
+    checkAndSaveHighScore(score, duration = this.durationMinutes) {
+        const prevBest = this.getHighScore(duration);
+        const isNewBest = score > prevBest;
+        if (isNewBest) {
+            this.highScores[duration] = score;
+            this.saveHighScores();
+        }
+        return { isNewBest, prevBest, newBest: Math.max(score, prevBest) };
+    }
+
+    /**
+     * Dynamically partition puzzles into difficulty tiers.
+     * Works for any set of puzzles (existing or newly added) based on ratings,
+     * themes (mateIn1, oneMove) and move counts.
+     */
+    buildTierDecks() {
+        const decks = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+
+        this.puzzles.forEach(p => {
+            const isOneMove = (p.themes && (p.themes.includes('mateIn1') || p.themes.includes('oneMove'))) || (p.moves && p.moves.length === 2);
+            const r = p.rating || 1000;
+
+            if (isOneMove || r < 950) {
+                decks[1].push(p);
+            } else if (r < 1250) {
+                decks[2].push(p);
+            } else if (r < 1550) {
+                decks[3].push(p);
+            } else if (r < 1850) {
+                decks[4].push(p);
+            } else if (r < 2150) {
+                decks[5].push(p);
+            } else {
+                decks[6].push(p);
+            }
+        });
+
+        // Ensure no tier is empty by falling back to nearest tier if needed
+        for (let t = 1; t <= 6; t++) {
+            if (decks[t].length === 0) {
+                decks[t] = [...this.puzzles];
+            }
+            decks[t] = this.shuffleArray([...decks[t]]);
+        }
+
+        this.tierDecks = decks;
+    }
+
+    shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    /**
+     * Determines current difficulty tier level (1-6) based on current score.
+     */
+    getTierForScore(score = this.score) {
+        if (score < 5) return 1;
+        if (score < 10) return 2;
+        if (score < 15) return 3;
+        if (score < 20) return 4;
+        if (score < 25) return 5;
+        return 6;
+    }
+
+    static getTierInfo(tierLevel) {
+        const info = {
+            1: { name: 'Warmup', ratingRange: '< 950', desc: 'Mate in 1 & Quick Tactics', badgeColor: '#34d399' },
+            2: { name: 'Easy', ratingRange: '950–1250', desc: 'Basic Tactics & Mate in 2', badgeColor: '#60a5fa' },
+            3: { name: 'Intermediate', ratingRange: '1250–1550', desc: 'Tactical Combinations', badgeColor: '#818cf8' },
+            4: { name: 'Advanced', ratingRange: '1550–1850', desc: 'Attacks & Sacrifices', badgeColor: '#a78bfa' },
+            5: { name: 'Expert', ratingRange: '1850–2150', desc: 'Deep Calculation', badgeColor: '#f59e0b' },
+            6: { name: 'Master', ratingRange: '2150+', desc: 'Master Tactics', badgeColor: '#f43f5e' }
+        };
+        return info[tierLevel] || info[6];
+    }
+
+    startRun(durationMinutes = 3) {
+        this.durationMinutes = durationMinutes;
+        this.timeRemaining = durationMinutes * 60;
+        this.hearts = 5;
+        this.score = 0;
+        this.streak = 0;
+        this.bestStreak = 0;
+        this.mistakes = 0;
+        this.attempted = 0;
+        this.isActive = true;
+        this.currentTierLevel = 1;
+        this.buildTierDecks();
+        return this.getNextPuzzle();
+    }
+
+    getNextPuzzle() {
+        if (!this.isActive) return null;
+        this.currentTierLevel = this.getTierForScore(this.score);
+
+        let deck = this.tierDecks[this.currentTierLevel];
+        if (!deck || deck.length === 0) {
+            // Re-shuffle full tier pool if exhausted
+            this.buildTierDecks();
+            deck = this.tierDecks[this.currentTierLevel];
+        }
+
+        this.currentPuzzle = deck.pop();
+        this.moveIndex = 0;
+        return this.currentPuzzle;
+    }
+
+    verifyMove(from, to, san = '', promo = '') {
+        if (!this.currentPuzzle || !this.isActive) return { valid: false };
+
+        const expectedMove = this.currentPuzzle.moves[this.moveIndex];
+        if (!expectedMove) return { valid: false };
+
+        const userUci = (from + to + (promo || '')).toLowerCase();
+        const expectedUci = expectedMove.toLowerCase();
+
+        const expectedFrom = expectedMove.length >= 4 ? expectedMove.substring(0, 2).toLowerCase() : '';
+        const expectedTo   = expectedMove.length >= 4 ? expectedMove.substring(2, 4).toLowerCase() : '';
+
+        const sanClean      = san.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+        const expectedClean = expectedMove.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+
+        const isSquareMatch = (from.toLowerCase() === expectedFrom && to.toLowerCase() === expectedTo);
+        const isUciMatch    = (userUci === expectedUci);
+        const isSanMatch    = (sanClean !== '' && sanClean === expectedClean);
+
+        const isCorrect = isSquareMatch || isUciMatch || isSanMatch;
+
+        if (isCorrect) {
+            this.moveIndex++;
+            const isCompleted = (this.moveIndex >= this.currentPuzzle.moves.length);
+
+            let replyMove = null;
+            if (!isCompleted) {
+                replyMove = this.currentPuzzle.moves[this.moveIndex];
+                this.moveIndex++;
+            } else {
+                this.score++;
+                this.attempted++;
+                this.streak++;
+                if (this.streak > this.bestStreak) {
+                    this.bestStreak = this.streak;
+                }
+            }
+
+            return {
+                valid: true,
+                completed: isCompleted,
+                replyMove: replyMove,
+                score: this.score,
+                streak: this.streak,
+                tierLevel: this.getTierForScore(this.score)
+            };
+        } else {
+            this.hearts--;
+            this.mistakes++;
+            this.attempted++;
+            this.streak = 0;
+
+            const isGameOver = (this.hearts <= 0);
+            if (isGameOver) {
+                this.isActive = false;
+            }
+
+            return {
+                valid: false,
+                expectedMove: expectedMove,
+                heartsRemaining: this.hearts,
+                isGameOver: isGameOver,
+                mistakes: this.mistakes
+            };
+        }
+    }
+
+    endRun() {
+        this.isActive = false;
+        const result = this.checkAndSaveHighScore(this.score, this.durationMinutes);
+        return {
+            score: this.score,
+            duration: this.durationMinutes,
+            timeElapsed: (this.durationMinutes * 60) - Math.max(0, this.timeRemaining),
+            mistakes: this.mistakes,
+            attempted: this.attempted,
+            accuracy: this.attempted > 0 ? Math.round((this.score / this.attempted) * 100) : 0,
+            bestStreak: this.bestStreak,
+            highestTier: this.getTierForScore(this.score),
+            isNewBest: result.isNewBest,
+            prevBest: result.prevBest,
+            bestScore: result.newBest
+        };
+    }
+}
+
+if (typeof window !== 'undefined') {
+    window.PuzzleStormEngine = PuzzleStormEngine;
+    window.PuzzleManager = PuzzleManager;
+}
+if (typeof global !== 'undefined') {
+    global.PuzzleStormEngine = PuzzleStormEngine;
+    global.PuzzleManager = PuzzleManager;
+}
+
+
+

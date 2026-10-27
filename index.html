@@ -10,7 +10,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <link rel="stylesheet" href="css/style.css?v=2.5">
+    <link rel="stylesheet" href="css/style.css?v=2.6">
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -263,101 +263,186 @@
 
             <!-- Puzzles Mode Toolbar (Active in Puzzles Mode) -->
             <div id="puzzles-controls-card" class="card" style="display: none;">
-                <!-- Compact header row: score + next puzzle button -->
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
-                    <span id="puzzle-score-badge" style="font-size: 0.78rem; color: var(--accent-emerald); font-weight: 700;">Solved: 0 | Failed: 0</span>
-                    <div style="display: flex; gap: 0.35rem;">
-                        <button id="btn-puzzle-hint" class="btn btn-sm" style="min-height: 30px;">💡 Hint</button>
-                        <button id="btn-next-puzzle" class="btn btn-primary btn-sm" style="min-height: 30px;">⏭ Next</button>
+                <!-- Sub-Mode Selector Pills -->
+                <div class="puzzle-submode-nav" style="display: flex; gap: 0.35rem; margin-bottom: 0.65rem; border-bottom: 1px solid var(--border-glass); padding-bottom: 0.45rem;">
+                    <button id="btn-submode-classic" class="practice-pill active" type="button">🎯 Classic Practice</button>
+                    <button id="btn-submode-storm" class="practice-pill" type="button">⚡ Puzzle Storm</button>
+                </div>
+
+                <!-- Classic Puzzles View -->
+                <div id="puzzle-classic-container">
+                    <!-- Compact header row: score + next puzzle button -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <span id="puzzle-score-badge" style="font-size: 0.78rem; color: var(--accent-emerald); font-weight: 700;">Solved: 0 | Failed: 0</span>
+                        <div style="display: flex; gap: 0.35rem;">
+                            <button id="btn-puzzle-hint" class="btn btn-sm" style="min-height: 30px;">💡 Hint</button>
+                            <button id="btn-next-puzzle" class="btn btn-primary btn-sm" style="min-height: 30px;">⏭ Next</button>
+                        </div>
+                    </div>
+
+                    <!-- Collapsible filter row -->
+                    <details id="puzzle-filter-details" style="margin-bottom: 0.35rem;">
+                        <summary style="font-size: 0.72rem; color: var(--text-muted); cursor: pointer; padding: 0.2rem 0; list-style: none; display: flex; align-items: center; gap: 0.35rem;">
+                            <span style="font-size: 0.8rem;">⚙️</span> <span>Filter: Theme & Rating</span>
+                            <span style="margin-left: auto; font-size: 0.65rem; opacity: 0.6;">▼</span>
+                        </summary>
+                        <div style="margin-top: 0.4rem; display: flex; flex-direction: column; gap: 0.35rem;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem;">
+                                <div>
+                                    <label style="font-size: 0.65rem; color: var(--text-muted); display: block; margin-bottom: 2px;">🏷️ Theme</label>
+                                    <select id="select-puzzle-category" class="select-field" style="font-size: 0.75rem; padding: 0.3rem 0.4rem;">
+                                        <option value="mixed" selected>🎲 All Themes</option>
+                                        <optgroup label="── Checkmates ──">
+                                            <option value="mateIn1">Mate in 1</option>
+                                            <option value="mateIn2">Mate in 2</option>
+                                            <option value="mateIn3">Mate in 3</option>
+                                            <option value="backRankMate">Back Rank</option>
+                                            <option value="smotheredMate">Smothered</option>
+                                            <option value="arabianMate">Arabian</option>
+                                            <option value="bodenMate">Boden's</option>
+                                            <option value="cornerMate">Corner</option>
+                                        </optgroup>
+                                        <optgroup label="── Motifs ──">
+                                            <option value="fork">Fork</option>
+                                            <option value="pin">Pin</option>
+                                            <option value="skewer">Skewer</option>
+                                            <option value="discoveredAttack">Discovered Attack</option>
+                                            <option value="discoveredCheck">Discovered Check</option>
+                                            <option value="doubleCheck">Double Check</option>
+                                            <option value="deflection">Deflection</option>
+                                            <option value="attraction">Attraction</option>
+                                            <option value="sacrifice">Sacrifice</option>
+                                            <option value="hangingPiece">Hanging Piece</option>
+                                            <option value="clearance">Clearance</option>
+                                            <option value="intermezzo">Intermezzo</option>
+                                            <option value="quietMove">Quiet Move</option>
+                                            <option value="xRayAttack">X-Ray Attack</option>
+                                            <option value="trappedPiece">Trapped Piece</option>
+                                        </optgroup>
+                                        <optgroup label="── Attacks ──">
+                                            <option value="kingsideAttack">Kingside Attack</option>
+                                            <option value="queensideAttack">Queenside Attack</option>
+                                            <option value="exposedKing">Exposed King</option>
+                                            <option value="advancedPawn">Advanced Pawn</option>
+                                        </optgroup>
+                                        <optgroup label="── Game Phase ──">
+                                            <option value="opening">Opening</option>
+                                            <option value="endgame">Endgame</option>
+                                            <option value="pawnEndgame">Pawn Endgame</option>
+                                            <option value="rookEndgame">Rook Endgame</option>
+                                            <option value="knightEndgame">Knight Endgame</option>
+                                            <option value="queenEndgame">Queen Endgame</option>
+                                        </optgroup>
+                                        <optgroup label="── Special ──">
+                                            <option value="promotion">Promotion</option>
+                                            <option value="underPromotion">Underpromotion</option>
+                                            <option value="enPassant">En Passant</option>
+                                            <option value="zugzwang">Zugzwang</option>
+                                            <option value="defensiveMove">Defensive Move</option>
+                                        </optgroup>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.65rem; color: var(--text-muted); display: block; margin-bottom: 2px;">⭐ Rating</label>
+                                    <select id="select-puzzle-rating" class="select-field" style="font-size: 0.75rem; padding: 0.3rem 0.4rem;">
+                                        <option value="800_1100">Beginner (800–1100)</option>
+                                        <option value="1100_1400" selected>Intermediate (1100–1400)</option>
+                                        <option value="1400_1700">Advanced (1400–1700)</option>
+                                        <option value="1700_2000">Expert (1700–2000)</option>
+                                        <option value="2000_3000">Master (2000+)</option>
+                                        <option value="0_3000">All Ratings</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button id="btn-puzzle-history" class="btn" style="width: 100%; font-size: 0.75rem; padding: 0.3rem;">📊 Puzzle Progress</button>
+                        </div>
+                    </details>
+
+                    <div id="puzzle-feedback" class="recommendation-box" style="background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3); margin-top: 0; padding: 0.5rem 0.6rem;">
+                        <!-- Lichess ID badge -->
+                        <div id="puzzle-lichess-badge" style="font-size: 0.62rem; color: var(--text-muted); margin-bottom: 3px; display: none;">
+                            🔗 Lichess ID: <a id="puzzle-lichess-id-link" href="#" target="_blank" style="font-family: monospace; color: var(--accent-emerald); text-decoration: none;"></a>
+                            &nbsp;·&nbsp; ⭐ <span id="puzzle-rating-display"></span>
+                        </div>
+                        <div id="puzzle-description" class="recommendation-text" style="font-weight: 600;">
+                            Select a theme and rating range, then click Next Puzzle!
+                        </div>
                     </div>
                 </div>
 
-                <!-- Collapsible filter row -->
-                <details id="puzzle-filter-details" style="margin-bottom: 0.35rem;">
-                    <summary style="font-size: 0.72rem; color: var(--text-muted); cursor: pointer; padding: 0.2rem 0; list-style: none; display: flex; align-items: center; gap: 0.35rem;">
-                        <span style="font-size: 0.8rem;">⚙️</span> <span>Filter: Theme & Rating</span>
-                        <span style="margin-left: auto; font-size: 0.65rem; opacity: 0.6;">▼</span>
-                    </summary>
-                    <div style="margin-top: 0.4rem; display: flex; flex-direction: column; gap: 0.35rem;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem;">
-                            <div>
-                                <label style="font-size: 0.65rem; color: var(--text-muted); display: block; margin-bottom: 2px;">🏷️ Theme</label>
-                                <select id="select-puzzle-category" class="select-field" style="font-size: 0.75rem; padding: 0.3rem 0.4rem;">
-                                    <option value="mixed" selected>🎲 All Themes</option>
-                                    <optgroup label="── Checkmates ──">
-                                        <option value="mateIn1">Mate in 1</option>
-                                        <option value="mateIn2">Mate in 2</option>
-                                        <option value="mateIn3">Mate in 3</option>
-                                        <option value="backRankMate">Back Rank</option>
-                                        <option value="smotheredMate">Smothered</option>
-                                        <option value="arabianMate">Arabian</option>
-                                        <option value="bodenMate">Boden's</option>
-                                        <option value="cornerMate">Corner</option>
-                                    </optgroup>
-                                    <optgroup label="── Motifs ──">
-                                        <option value="fork">Fork</option>
-                                        <option value="pin">Pin</option>
-                                        <option value="skewer">Skewer</option>
-                                        <option value="discoveredAttack">Discovered Attack</option>
-                                        <option value="discoveredCheck">Discovered Check</option>
-                                        <option value="doubleCheck">Double Check</option>
-                                        <option value="deflection">Deflection</option>
-                                        <option value="attraction">Attraction</option>
-                                        <option value="sacrifice">Sacrifice</option>
-                                        <option value="hangingPiece">Hanging Piece</option>
-                                        <option value="clearance">Clearance</option>
-                                        <option value="intermezzo">Intermezzo</option>
-                                        <option value="quietMove">Quiet Move</option>
-                                        <option value="xRayAttack">X-Ray Attack</option>
-                                        <option value="trappedPiece">Trapped Piece</option>
-                                    </optgroup>
-                                    <optgroup label="── Attacks ──">
-                                        <option value="kingsideAttack">Kingside Attack</option>
-                                        <option value="queensideAttack">Queenside Attack</option>
-                                        <option value="exposedKing">Exposed King</option>
-                                        <option value="advancedPawn">Advanced Pawn</option>
-                                    </optgroup>
-                                    <optgroup label="── Game Phase ──">
-                                        <option value="opening">Opening</option>
-                                        <option value="endgame">Endgame</option>
-                                        <option value="pawnEndgame">Pawn Endgame</option>
-                                        <option value="rookEndgame">Rook Endgame</option>
-                                        <option value="knightEndgame">Knight Endgame</option>
-                                        <option value="queenEndgame">Queen Endgame</option>
-                                    </optgroup>
-                                    <optgroup label="── Special ──">
-                                        <option value="promotion">Promotion</option>
-                                        <option value="underPromotion">Underpromotion</option>
-                                        <option value="enPassant">En Passant</option>
-                                        <option value="zugzwang">Zugzwang</option>
-                                        <option value="defensiveMove">Defensive Move</option>
-                                    </optgroup>
-                                </select>
-                            </div>
-                            <div>
-                                <label style="font-size: 0.65rem; color: var(--text-muted); display: block; margin-bottom: 2px;">⭐ Rating</label>
-                                <select id="select-puzzle-rating" class="select-field" style="font-size: 0.75rem; padding: 0.3rem 0.4rem;">
-                                    <option value="800_1100">Beginner (800–1100)</option>
-                                    <option value="1100_1400" selected>Intermediate (1100–1400)</option>
-                                    <option value="1400_1700">Advanced (1400–1700)</option>
-                                    <option value="1700_2000">Expert (1700–2000)</option>
-                                    <option value="2000_3000">Master (2000+)</option>
-                                    <option value="0_3000">All Ratings</option>
-                                </select>
+                <!-- Puzzle Storm View -->
+                <div id="puzzle-storm-container" style="display: none;">
+                    <!-- Storm Lobby -->
+                    <div id="storm-lobby-view">
+                        <!-- High Scores Banner -->
+                        <div class="storm-pb-banner" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: var(--radius-sm); padding: 0.45rem 0.6rem; margin-bottom: 0.65rem; display: flex; align-items: center; justify-content: space-between;">
+                            <span style="font-size: 0.75rem; color: var(--accent-amber); font-weight: 700;">🏆 Personal Best</span>
+                            <span style="font-size: 0.72rem; color: var(--text-primary); font-weight: 600;">
+                                3m: <strong id="storm-pb-3min" style="color: var(--accent-amber);">0</strong> &nbsp;|&nbsp; 5m: <strong id="storm-pb-5min" style="color: var(--accent-amber);">0</strong>
+                            </span>
+                        </div>
+
+                        <!-- Timer Selector -->
+                        <div style="margin-bottom: 0.65rem;">
+                            <label style="font-size: 0.68rem; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">⏱️ Time Control</label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem;">
+                                <button id="btn-storm-time-3" class="practice-pill active" type="button" data-time="3" style="text-align: center; padding: 0.35rem 0.5rem; justify-content: center;">⏱️ 3 Minutes</button>
+                                <button id="btn-storm-time-5" class="practice-pill" type="button" data-time="5" style="text-align: center; padding: 0.35rem 0.5rem; justify-content: center;">⏱️ 5 Minutes</button>
                             </div>
                         </div>
-                        <button id="btn-puzzle-history" class="btn" style="width: 100%; font-size: 0.75rem; padding: 0.3rem;">📊 Puzzle Progress</button>
-                    </div>
-                </details>
 
-                <div id="puzzle-feedback" class="recommendation-box" style="background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3); margin-top: 0; padding: 0.5rem 0.6rem;">
-                    <!-- Lichess ID badge -->
-                    <div id="puzzle-lichess-badge" style="font-size: 0.62rem; color: var(--text-muted); margin-bottom: 3px; display: none;">
-                        🔗 Lichess ID: <a id="puzzle-lichess-id-link" href="#" target="_blank" style="font-family: monospace; color: var(--accent-emerald); text-decoration: none;"></a>
-                        &nbsp;·&nbsp; ⭐ <span id="puzzle-rating-display"></span>
+                        <!-- Rules Description Card -->
+                        <div class="storm-rules-card" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 0.5rem 0.65rem; margin-bottom: 0.75rem; font-size: 0.7rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 0.35rem; line-height: 1.35;">
+                            <div>❤️ <strong>5 Heart Points</strong> — Lose one for every mistake.</div>
+                            <div>⏱️ <strong>Race the Clock</strong> — 3 or 5 minutes of rapid-fire tactics.</div>
+                            <div>📈 <strong>Dynamic Difficulty</strong> — Starts with Mate-in-1 / low Elo and scales to master tactics!</div>
+                            <div>🎯 <strong>1 Point</strong> for every completed puzzle.</div>
+                        </div>
+
+                        <!-- Start Button -->
+                        <button id="btn-start-storm" class="btn btn-primary" type="button" style="width: 100%; min-height: 40px; font-weight: 700; font-size: 0.85rem; letter-spacing: 0.02em; display: flex; align-items: center; justify-content: center; gap: 0.4rem; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);">
+                            ⚡ Start Puzzle Storm
+                        </button>
                     </div>
-                    <div id="puzzle-description" class="recommendation-text" style="font-weight: 600;">
-                        Select a theme and rating range, then click Next Puzzle!
+
+                    <!-- Active Storm Game HUD -->
+                    <div id="storm-active-view" style="display: none;">
+                        <!-- HUD Header: Timer & Hearts -->
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <!-- Timer -->
+                            <div id="storm-timer-badge" class="storm-timer-badge">
+                                <span style="font-size: 0.75rem;">⏱️</span> <span id="storm-timer-text">03:00</span>
+                            </div>
+
+                            <!-- Hearts -->
+                            <div id="storm-hearts-container" class="storm-hearts-container" title="5 Heart Points">
+                                <span class="storm-heart" id="storm-heart-1">❤️</span>
+                                <span class="storm-heart" id="storm-heart-2">❤️</span>
+                                <span class="storm-heart" id="storm-heart-3">❤️</span>
+                                <span class="storm-heart" id="storm-heart-4">❤️</span>
+                                <span class="storm-heart" id="storm-heart-5">❤️</span>
+                            </div>
+                        </div>
+
+                        <!-- Secondary Stats & Tier Bar -->
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-glass); border-radius: var(--radius-sm); padding: 0.35rem 0.5rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span style="font-size: 0.78rem; font-weight: 700; color: var(--accent-emerald);">⭐ <span id="storm-score-val">0</span></span>
+                                <span style="font-size: 0.75rem; font-weight: 600; color: var(--accent-amber);">🔥 <span id="storm-streak-val">0</span></span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.35rem;">
+                                <span id="storm-tier-badge" class="badge" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); font-size: 0.65rem; padding: 2px 6px;">Tier 1 · Warmup</span>
+                                <button id="btn-abandon-storm" class="btn btn-sm" type="button" style="padding: 0.15rem 0.45rem; font-size: 0.65rem; min-height: 22px; color: var(--text-muted);" title="End Run">✕</button>
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Action Feedback Box -->
+                        <div id="storm-feedback-box" class="recommendation-box" style="margin-top: 0; padding: 0.45rem 0.6rem; min-height: 48px; display: flex; align-items: center; justify-content: space-between;">
+                            <div id="storm-status-text" style="font-size: 0.78rem; font-weight: 600; color: var(--text-primary);">
+                                ♔ White to move
+                            </div>
+                            <div id="storm-flash-indicator" style="font-size: 0.78rem; font-weight: 700;"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -693,6 +778,64 @@
         </div>
     </div>
 
+    <!-- Puzzle Storm Game Over Modal -->
+    <div id="storm-gameover-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 440px; text-align: center; padding: 1.5rem;">
+            <!-- Lightning / Trophy Icon -->
+            <div style="font-size: 2.2rem; margin-bottom: 0.35rem;">⚡</div>
+            <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.2rem;">Puzzle Storm Complete!</h2>
+            
+            <!-- End Reason Badge -->
+            <div id="storm-over-reason" style="display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.65rem; border-radius: 20px; margin-bottom: 1rem; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);">
+                💔 5 Mistakes Made
+            </div>
+
+            <!-- Big Score Display -->
+            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
+                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Final Score</div>
+                <div id="storm-final-score" style="font-size: 3rem; font-weight: 900; color: var(--accent-emerald); line-height: 1; text-shadow: 0 0 20px rgba(16, 185, 129, 0.4);">
+                    0
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Puzzles Solved</div>
+
+                <!-- New Highscore Banner (hidden by default) -->
+                <div id="storm-new-record-badge" style="display: none; margin-top: 0.65rem; background: linear-gradient(135deg, rgba(245, 158, 11, 0.3), rgba(217, 119, 6, 0.2)); border: 1px solid var(--accent-amber); border-radius: 20px; padding: 0.25rem 0.75rem; font-size: 0.72rem; font-weight: 800; color: var(--accent-amber); box-shadow: 0 0 15px rgba(245, 158, 11, 0.35);">
+                    🎉 NEW PERSONAL BEST! 🎉
+                </div>
+            </div>
+
+            <!-- Detailed Stats Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1.25rem; text-align: left;">
+                <div class="summary-chip" style="margin: 0; padding: 0.5rem 0.65rem;">
+                    <span class="chip-label">Accuracy</span>
+                    <span id="storm-stat-accuracy" class="chip-val" style="color: var(--text-primary);">0%</span>
+                </div>
+                <div class="summary-chip" style="margin: 0; padding: 0.5rem 0.65rem;">
+                    <span class="chip-label">Best Streak</span>
+                    <span id="storm-stat-streak" class="chip-val" style="color: var(--accent-amber);">🔥 0</span>
+                </div>
+                <div class="summary-chip" style="margin: 0; padding: 0.5rem 0.65rem;">
+                    <span class="chip-label">Time Played</span>
+                    <span id="storm-stat-time" class="chip-val" style="color: var(--text-primary);">03:00</span>
+                </div>
+                <div class="summary-chip" style="margin: 0; padding: 0.5rem 0.65rem;">
+                    <span class="chip-label">Max Difficulty</span>
+                    <span id="storm-stat-tier" class="chip-val" style="color: var(--accent-blue); font-size: 0.8rem;">Tier 1</span>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 0.5rem;">
+                <button id="btn-storm-play-again" class="btn btn-primary" type="button" style="flex: 1; padding: 0.6rem; font-weight: 700; font-size: 0.85rem;">
+                    🔄 Play Again
+                </button>
+                <button id="btn-storm-back-classic" class="btn" type="button" style="flex: 1; padding: 0.6rem; font-size: 0.85rem;">
+                    🎯 Back to Classic
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="js/chess.min.js"></script>
     <script src="js/stockfishEngine.js?v=3.1"></script>
@@ -700,10 +843,10 @@
     <script src="js/pieces.js?v=2.3"></script>
     <script src="js/boardRenderer.js?v=2.6"></script>
     <script src="js/pgnParser.js?v=3.0"></script>
-    <script src="js/puzzles.js?v=2.3"></script>
-    <script src="js/audio.js?v=2.3"></script>
+    <script src="js/puzzles.js?v=2.4"></script>
+    <script src="js/audio.js?v=2.4"></script>
     <script src="js/practice.js?v=2.6"></script>
-    <script src="js/app.js?v=3.2"></script>
+    <script src="js/app.js?v=3.3"></script>
 
 </body>
 </html>

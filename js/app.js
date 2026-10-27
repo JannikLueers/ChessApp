@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const botEngine = new StockfishEngine();
     const graphEngine = new StockfishEngine();
     const puzzleManager = new PuzzleManager();
+    const stormEngine = new PuzzleStormEngine(puzzleManager.puzzles);
     const practiceManager = new PracticeManager();
     const practiceEngine = new StockfishEngine();
 
@@ -87,8 +88,49 @@ document.addEventListener('DOMContentLoaded', () => {
     const puzzleScoreBadge = document.getElementById('puzzle-score-badge');
     const puzzleDescription = document.getElementById('puzzle-description');
 
+    // Puzzle Sub-Modes & Storm DOM
+    const btnSubmodeClassic = document.getElementById('btn-submode-classic');
+    const btnSubmodeStorm = document.getElementById('btn-submode-storm');
+    const puzzleClassicContainer = document.getElementById('puzzle-classic-container');
+    const puzzleStormContainer = document.getElementById('puzzle-storm-container');
+
+    const stormLobbyView = document.getElementById('storm-lobby-view');
+    const stormActiveView = document.getElementById('storm-active-view');
+    const stormPb3min = document.getElementById('storm-pb-3min');
+    const stormPb5min = document.getElementById('storm-pb-5min');
+    const btnStormTime3 = document.getElementById('btn-storm-time-3');
+    const btnStormTime5 = document.getElementById('btn-storm-time-5');
+    const btnStartStorm = document.getElementById('btn-start-storm');
+
+    const stormTimerBadge = document.getElementById('storm-timer-badge');
+    const stormTimerText = document.getElementById('storm-timer-text');
+    const stormHeartsContainer = document.getElementById('storm-hearts-container');
+    const stormScoreVal = document.getElementById('storm-score-val');
+    const stormStreakVal = document.getElementById('storm-streak-val');
+    const stormTierBadge = document.getElementById('storm-tier-badge');
+    const btnAbandonStorm = document.getElementById('btn-abandon-storm');
+    const stormFeedbackBox = document.getElementById('storm-feedback-box');
+    const stormStatusText = document.getElementById('storm-status-text');
+    const stormFlashIndicator = document.getElementById('storm-flash-indicator');
+
+    // Storm Game Over Modal
+    const stormGameoverModal = document.getElementById('storm-gameover-modal');
+    const stormOverReason = document.getElementById('storm-over-reason');
+    const stormFinalScore = document.getElementById('storm-final-score');
+    const stormNewRecordBadge = document.getElementById('storm-new-record-badge');
+    const stormStatAccuracy = document.getElementById('storm-stat-accuracy');
+    const stormStatStreak = document.getElementById('storm-stat-streak');
+    const stormStatTime = document.getElementById('storm-stat-time');
+    const stormStatTier = document.getElementById('storm-stat-tier');
+    const btnStormPlayAgain = document.getElementById('btn-storm-play-again');
+    const btnStormBackClassic = document.getElementById('btn-storm-back-classic');
+
     // App State
     let currentMode = 'play'; // 'play', 'analysis', 'puzzles', or 'practice'
+    let puzzleSubMode = 'classic'; // 'classic' or 'storm'
+    let selectedStormDuration = 3; // 3 or 5
+    let stormTimerInterval = null;
+    let stormMistakeTimeout = null;
     let playerColor = 'w';
     let isFlipped = false;
     let selectedSquare = null;
@@ -203,6 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Tab Mode Switcher ---
     tabPlay.addEventListener('click', () => {
         currentMode = 'play';
+        stopStormRun(false);
         setActiveTab(tabPlay);
         if (autoNextTimeout) { clearTimeout(autoNextTimeout); autoNextTimeout = null; }
         if (puzzleBlunderTimeout) { clearTimeout(puzzleBlunderTimeout); puzzleBlunderTimeout = null; }
@@ -225,6 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     tabAnalysis.addEventListener('click', () => {
         currentMode = 'analysis';
+        stopStormRun(false);
         setActiveTab(tabAnalysis);
         if (autoNextTimeout) { clearTimeout(autoNextTimeout); autoNextTimeout = null; }
         if (puzzleBlunderTimeout) { clearTimeout(puzzleBlunderTimeout); puzzleBlunderTimeout = null; }
@@ -262,6 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setActiveTab(tabPuzzles);
         if (autoNextTimeout) { clearTimeout(autoNextTimeout); autoNextTimeout = null; }
         if (puzzleBlunderTimeout) { clearTimeout(puzzleBlunderTimeout); puzzleBlunderTimeout = null; }
+        if (stormMistakeTimeout) { clearTimeout(stormMistakeTimeout); stormMistakeTimeout = null; }
         boardRenderer.clearHighlights();
         boardRenderer.clearArrows();
         playControlsCard.style.display = 'none';
@@ -279,11 +324,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (boardSection) boardSection.classList.add('puzzle-fullboard');
         const playerBannerCard = document.getElementById('player-banner-card');
         if (playerBannerCard) playerBannerCard.style.display = 'none';
-        loadNextPuzzle();
+        
+        if (puzzleSubMode === 'storm') {
+            showStormLobby();
+        } else {
+            loadNextPuzzle();
+        }
     });
 
     tabPractice.addEventListener('click', () => {
         currentMode = 'practice';
+        stopStormRun(false);
         setActiveTab(tabPractice);
         if (autoNextTimeout) { clearTimeout(autoNextTimeout); autoNextTimeout = null; }
         if (puzzleBlunderTimeout) { clearTimeout(puzzleBlunderTimeout); puzzleBlunderTimeout = null; }
@@ -2666,6 +2717,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function attemptPuzzleMove(from, to, chosenPromo = 'q') {
+        if (puzzleSubMode === 'storm') {
+            attemptStormMove(from, to, chosenPromo);
+            return;
+        }
+
         if (isPuzzleLocked) return;
         const legalMoves = chess.moves({ square: from, verbose: true });
         const targetMove = legalMoves.find(m => m.to === to);
@@ -2762,6 +2818,450 @@ document.addEventListener('DOMContentLoaded', () => {
 
             puzzleScoreBadge.textContent = `Solved: ${puzzleManager.score.solved} | Failed: ${puzzleManager.score.failed}`;
         }
+    }
+
+
+    // ==========================================================================
+    // PUZZLE STORM GAME MODE
+    // ==========================================================================
+
+    function setPuzzleSubMode(subMode) {
+        if (subMode === 'classic') {
+            puzzleSubMode = 'classic';
+            stopStormRun(false);
+            if (stormGameoverModal) stormGameoverModal.classList.remove('active');
+            if (btnSubmodeClassic) btnSubmodeClassic.classList.add('active');
+            if (btnSubmodeStorm) btnSubmodeStorm.classList.remove('active');
+            if (puzzleClassicContainer) puzzleClassicContainer.style.display = 'block';
+            if (puzzleStormContainer) puzzleStormContainer.style.display = 'none';
+            loadNextPuzzle();
+        } else if (subMode === 'storm') {
+            puzzleSubMode = 'storm';
+            if (autoNextTimeout) { clearTimeout(autoNextTimeout); autoNextTimeout = null; }
+            if (puzzleBlunderTimeout) { clearTimeout(puzzleBlunderTimeout); puzzleBlunderTimeout = null; }
+            if (btnSubmodeClassic) btnSubmodeClassic.classList.remove('active');
+            if (btnSubmodeStorm) btnSubmodeStorm.classList.add('active');
+            if (puzzleClassicContainer) puzzleClassicContainer.style.display = 'none';
+            if (puzzleStormContainer) puzzleStormContainer.style.display = 'block';
+            showStormLobby();
+        }
+    }
+
+    function showStormLobby() {
+        stopStormRun(false);
+        if (stormGameoverModal) stormGameoverModal.classList.remove('active');
+        if (stormLobbyView) stormLobbyView.style.display = 'block';
+        if (stormActiveView) stormActiveView.style.display = 'none';
+        if (stormPb3min) stormPb3min.textContent = stormEngine.getHighScore(3);
+        if (stormPb5min) stormPb5min.textContent = stormEngine.getHighScore(5);
+
+        chess.reset();
+        puzzleLastMove = null;
+        selectedSquare = null;
+        isPuzzleLocked = true;
+        boardRenderer.clearHighlights();
+        boardRenderer.clearArrows();
+        updateUI();
+    }
+
+    function startStormGame() {
+        stopStormRun(false);
+        if (stormGameoverModal) stormGameoverModal.classList.remove('active');
+
+        if (stormLobbyView) stormLobbyView.style.display = 'none';
+        if (stormActiveView) stormActiveView.style.display = 'block';
+
+        // Reset heart points visual icons
+        for (let i = 1; i <= 5; i++) {
+            const h = document.getElementById(`storm-heart-${i}`);
+            if (h) {
+                h.textContent = '❤️';
+                h.className = 'storm-heart';
+            }
+        }
+
+        // Reset timer badge
+        if (stormTimerBadge) stormTimerBadge.classList.remove('warning');
+        if (stormTimerText) {
+            stormTimerText.textContent = selectedStormDuration === 5 ? '05:00' : '03:00';
+        }
+
+        // Reset score & streak
+        if (stormScoreVal) stormScoreVal.textContent = '0';
+        if (stormStreakVal) stormStreakVal.textContent = '0';
+
+        // Start engine
+        const firstPuzzle = stormEngine.startRun(selectedStormDuration);
+        updateStormTierBadge(1);
+
+        // Start 1-second countdown timer
+        stormTimerInterval = setInterval(onStormTimerTick, 1000);
+
+        if (firstPuzzle) {
+            displayStormPuzzle(firstPuzzle);
+        }
+    }
+
+    function onStormTimerTick() {
+        if (!stormEngine.isActive) {
+            if (stormTimerInterval) {
+                clearInterval(stormTimerInterval);
+                stormTimerInterval = null;
+            }
+            return;
+        }
+
+        stormEngine.timeRemaining--;
+        const rem = Math.max(0, stormEngine.timeRemaining);
+        const mins = Math.floor(rem / 60);
+        const secs = rem % 60;
+
+        if (stormTimerText) {
+            stormTimerText.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        // Warning animation when time <= 30 seconds
+        if (rem <= 30 && stormTimerBadge) {
+            stormTimerBadge.classList.add('warning');
+        }
+
+        // Auditory countdown tick during the final 10 seconds
+        if (rem <= 10 && rem > 0) {
+            sounds.playTick();
+        }
+
+        // Time ran out!
+        if (rem <= 0) {
+            if (stormTimerInterval) {
+                clearInterval(stormTimerInterval);
+                stormTimerInterval = null;
+            }
+            sounds.playTimeUp();
+            endStormRun('time_up');
+        }
+    }
+
+    function displayStormPuzzle(p) {
+        if (autoNextTimeout) { clearTimeout(autoNextTimeout); autoNextTimeout = null; }
+        if (puzzleBlunderTimeout) { clearTimeout(puzzleBlunderTimeout); puzzleBlunderTimeout = null; }
+        if (stormMistakeTimeout) { clearTimeout(stormMistakeTimeout); stormMistakeTimeout = null; }
+
+        puzzleLastMove = null;
+        chess.load(p.fen);
+        selectedSquare = null;
+        isPuzzleLocked = true;
+
+        const opponentColor = chess.turn();
+        const solverColor = (opponentColor === 'w') ? 'b' : 'w';
+
+        setBoardOrientation(solverColor === 'b');
+        boardRenderer.clearHighlights();
+        boardRenderer.clearArrows();
+
+        updateStormTierBadge(stormEngine.currentTierLevel);
+        if (stormStatusText) {
+            stormStatusText.textContent = (opponentColor === 'w') ? 'White is moving...' : 'Black is moving...';
+        }
+        if (stormFlashIndicator) {
+            stormFlashIndicator.textContent = '';
+        }
+        updateUI();
+
+        // Fast snappy auto-play for opponent blunder (250ms)
+        puzzleBlunderTimeout = setTimeout(() => {
+            if (!stormEngine.isActive) return;
+            const blunder = p.moves[0];
+            if (blunder) {
+                const bFrom = blunder.substring(0, 2);
+                const bTo = blunder.substring(2, 4);
+                const bPromo = blunder.substring(4, 5) || 'q';
+                const blunderObj = chess.move({ from: bFrom, to: bTo, promotion: bPromo });
+                puzzleLastMove = { from: bFrom, to: bTo };
+
+                if (chess.in_check()) sounds.playCheck();
+                else if (blunderObj && blunderObj.captured) sounds.playCapture();
+                else sounds.playMove();
+            }
+
+            stormEngine.moveIndex = 1;
+            isPuzzleLocked = false;
+            const solverLabel = (solverColor === 'w') ? '♔ White to move' : '♚ Black to move';
+            if (stormStatusText) stormStatusText.textContent = solverLabel;
+            updateUI();
+        }, 250);
+    }
+
+    function attemptStormMove(from, to, chosenPromo = 'q') {
+        if (isPuzzleLocked || !stormEngine.isActive) return;
+
+        const legalMoves = chess.moves({ square: from, verbose: true });
+        const targetMove = legalMoves.find(m => m.to === to);
+        if (!targetMove) return;
+
+        const moveSan = targetMove.san;
+        const promo = targetMove.promotion || chosenPromo || 'q';
+        const res = stormEngine.verifyMove(from, to, moveSan, promo);
+
+        if (res.valid) {
+            boardRenderer.clearArrows();
+            boardRenderer.clearHighlights();
+            const playedMoveObj = chess.move({ from, to, promotion: promo });
+            puzzleLastMove = { from, to };
+
+            if (chess.in_check()) sounds.playCheck();
+            else if (playedMoveObj && playedMoveObj.captured) sounds.playCapture();
+            else sounds.playMove();
+
+            updateUI();
+
+            if (res.completed) {
+                isPuzzleLocked = true;
+                flashStormFeedback('correct', `+1 ⭐ (${res.score})`);
+                sounds.playCheck();
+
+                if (stormScoreVal) stormScoreVal.textContent = res.score;
+                if (stormStreakVal) stormStreakVal.textContent = res.streak;
+                updateStormTierBadge(res.tierLevel);
+
+                // Auto-advance quickly to preserve racing speed (350ms)
+                if (autoNextTimeout) clearTimeout(autoNextTimeout);
+                autoNextTimeout = setTimeout(() => {
+                    if (!stormEngine.isActive) return;
+                    const nextP = stormEngine.getNextPuzzle();
+                    if (nextP) {
+                        displayStormPuzzle(nextP);
+                    } else {
+                        endStormRun('out_of_puzzles');
+                    }
+                }, 350);
+
+            } else if (res.replyMove) {
+                isPuzzleLocked = true;
+                setTimeout(() => {
+                    if (!stormEngine.isActive) return;
+                    const rFrom = res.replyMove.substring(0, 2);
+                    const rTo = res.replyMove.substring(2, 4);
+                    const rPromo = res.replyMove.substring(4, 5) || 'q';
+
+                    const replyMoveObj = chess.move({ from: rFrom, to: rTo, promotion: rPromo });
+                    puzzleLastMove = { from: rFrom, to: rTo };
+
+                    if (chess.in_check()) sounds.playCheck();
+                    else if (replyMoveObj && replyMoveObj.captured) sounds.playCapture();
+                    else sounds.playMove();
+
+                    isPuzzleLocked = false;
+                    updateUI();
+                }, 280);
+            }
+        } else {
+            // Mistake / Blunder in Puzzle Storm
+            isPuzzleLocked = true;
+            const playedMoveObj = chess.move({ from, to, promotion: promo });
+            puzzleLastMove = { from, to };
+            sounds.playBlunder();
+
+            // Animate heart loss & flash red indicator
+            animateStormHeartLost(res.heartsRemaining);
+            flashStormFeedback('mistake', `-1 ❤️`);
+            if (stormStreakVal) stormStreakVal.textContent = '0';
+
+            // Show blunder refutation arrow if available
+            if (res.expectedMove) {
+                const expFrom = res.expectedMove.substring(0, 2);
+                const expTo = res.expectedMove.substring(2, 4);
+                boardRenderer.drawArrow(expFrom, expTo, '#ef4444', 12);
+            }
+
+            updateUI();
+
+            if (res.isGameOver) {
+                if (stormMistakeTimeout) clearTimeout(stormMistakeTimeout);
+                stormMistakeTimeout = setTimeout(() => {
+                    endStormRun('out_of_hearts');
+                }, 500);
+            } else {
+                // 500ms brief blunder preview, then immediately serve next puzzle
+                if (stormMistakeTimeout) clearTimeout(stormMistakeTimeout);
+                stormMistakeTimeout = setTimeout(() => {
+                    if (!stormEngine.isActive) return;
+                    const nextP = stormEngine.getNextPuzzle();
+                    if (nextP) {
+                        displayStormPuzzle(nextP);
+                    } else {
+                        endStormRun('out_of_puzzles');
+                    }
+                }, 500);
+            }
+        }
+    }
+
+    function animateStormHeartLost(heartsRemaining) {
+        const lostHeartIdx = Math.max(1, Math.min(5, heartsRemaining + 1));
+        const heartEl = document.getElementById(`storm-heart-${lostHeartIdx}`);
+        if (heartEl) {
+            heartEl.classList.add('crack');
+            setTimeout(() => {
+                heartEl.textContent = '💔';
+                heartEl.classList.add('lost');
+                heartEl.classList.remove('crack');
+            }, 350);
+        }
+    }
+
+    function updateStormTierBadge(tierLevel) {
+        if (!stormTierBadge) return;
+        const info = PuzzleStormEngine.getTierInfo(tierLevel);
+        stormTierBadge.textContent = `Tier ${tierLevel} · ${info.name}`;
+        stormTierBadge.style.color = info.badgeColor;
+        stormTierBadge.style.borderColor = `${info.badgeColor}55`;
+    }
+
+    function flashStormFeedback(type, text) {
+        if (!stormFlashIndicator) return;
+        const isCorrect = (type === 'correct');
+        stormFlashIndicator.textContent = text;
+        stormFlashIndicator.style.color = isCorrect ? 'var(--accent-emerald)' : 'var(--accent-rose)';
+
+        const boardCard = document.querySelector('.board-card');
+        if (boardCard) {
+            boardCard.classList.remove('board-flash-green', 'board-flash-red');
+            void boardCard.offsetWidth; // Force CSS reflow
+            boardCard.classList.add(isCorrect ? 'board-flash-green' : 'board-flash-red');
+        }
+    }
+
+    function endStormRun(reason) {
+        stopStormRun(true);
+        const summary = stormEngine.endRun();
+
+        // Audio celebration or buzzer
+        if (summary.isNewBest && summary.score > 0) {
+            sounds.playStormSuccess();
+        } else if (reason === 'time_up') {
+            sounds.playTimeUp();
+        } else {
+            sounds.playBlunder();
+        }
+
+        // Configure Game Over Modal
+        if (stormOverReason) {
+            if (reason === 'time_up') {
+                stormOverReason.textContent = "⏰ Time's Up!";
+                stormOverReason.style.background = 'rgba(245, 158, 11, 0.2)';
+                stormOverReason.style.color = 'var(--accent-amber)';
+                stormOverReason.style.borderColor = 'rgba(245, 158, 11, 0.35)';
+            } else if (reason === 'out_of_hearts') {
+                stormOverReason.textContent = "💔 Out of Hearts (5 Mistakes)";
+                stormOverReason.style.background = 'rgba(239, 68, 68, 0.2)';
+                stormOverReason.style.color = '#f87171';
+                stormOverReason.style.borderColor = 'rgba(239, 68, 68, 0.35)';
+            } else if (reason === 'out_of_puzzles') {
+                stormOverReason.textContent = "🏁 All Available Puzzles Solved!";
+                stormOverReason.style.background = 'rgba(16, 185, 129, 0.2)';
+                stormOverReason.style.color = 'var(--accent-emerald)';
+                stormOverReason.style.borderColor = 'rgba(16, 185, 129, 0.35)';
+            } else {
+                stormOverReason.textContent = "✕ Run Abandoned";
+                stormOverReason.style.background = 'rgba(100, 116, 139, 0.2)';
+                stormOverReason.style.color = '#94a3b8';
+                stormOverReason.style.borderColor = 'rgba(100, 116, 139, 0.35)';
+            }
+        }
+
+        if (stormFinalScore) stormFinalScore.textContent = summary.score;
+        if (stormNewRecordBadge) {
+            stormNewRecordBadge.style.display = (summary.isNewBest && summary.score > 0) ? 'inline-block' : 'none';
+        }
+        if (stormStatAccuracy) {
+            stormStatAccuracy.textContent = `${summary.accuracy}% (${summary.score}/${summary.attempted})`;
+        }
+        if (stormStatStreak) {
+            stormStatStreak.textContent = `🔥 ${summary.bestStreak}`;
+        }
+        if (stormStatTime) {
+            const elM = Math.floor(summary.timeElapsed / 60);
+            const elS = summary.timeElapsed % 60;
+            stormStatTime.textContent = `${String(elM).padStart(2, '0')}:${String(elS).padStart(2, '0')}`;
+        }
+        if (stormStatTier) {
+            const tInfo = PuzzleStormEngine.getTierInfo(summary.highestTier);
+            stormStatTier.textContent = `Tier ${summary.highestTier} (${tInfo.name})`;
+        }
+
+        if (stormGameoverModal) {
+            stormGameoverModal.classList.add('active');
+        }
+
+        // Update high scores shown in lobby
+        if (stormPb3min) stormPb3min.textContent = stormEngine.getHighScore(3);
+        if (stormPb5min) stormPb5min.textContent = stormEngine.getHighScore(5);
+    }
+
+    function stopStormRun(keepActiveFlag = false) {
+        if (stormTimerInterval) {
+            clearInterval(stormTimerInterval);
+            stormTimerInterval = null;
+        }
+        if (autoNextTimeout) {
+            clearTimeout(autoNextTimeout);
+            autoNextTimeout = null;
+        }
+        if (puzzleBlunderTimeout) {
+            clearTimeout(puzzleBlunderTimeout);
+            puzzleBlunderTimeout = null;
+        }
+        if (stormMistakeTimeout) {
+            clearTimeout(stormMistakeTimeout);
+            stormMistakeTimeout = null;
+        }
+        if (!keepActiveFlag && stormEngine) {
+            stormEngine.isActive = false;
+        }
+    }
+
+    // Attach Puzzle Storm Event Listeners
+    if (btnSubmodeClassic) {
+        btnSubmodeClassic.addEventListener('click', () => setPuzzleSubMode('classic'));
+    }
+    if (btnSubmodeStorm) {
+        btnSubmodeStorm.addEventListener('click', () => setPuzzleSubMode('storm'));
+    }
+    if (btnStormTime3) {
+        btnStormTime3.addEventListener('click', () => {
+            selectedStormDuration = 3;
+            btnStormTime3.classList.add('active');
+            if (btnStormTime5) btnStormTime5.classList.remove('active');
+        });
+    }
+    if (btnStormTime5) {
+        btnStormTime5.addEventListener('click', () => {
+            selectedStormDuration = 5;
+            btnStormTime5.classList.add('active');
+            if (btnStormTime3) btnStormTime3.classList.remove('active');
+        });
+    }
+    if (btnStartStorm) {
+        btnStartStorm.addEventListener('click', startStormGame);
+    }
+    if (btnAbandonStorm) {
+        btnAbandonStorm.addEventListener('click', () => {
+            if (confirm('Abandon current Puzzle Storm run?')) {
+                endStormRun('abandoned');
+            }
+        });
+    }
+    if (btnStormPlayAgain) {
+        btnStormPlayAgain.addEventListener('click', () => {
+            if (stormGameoverModal) stormGameoverModal.classList.remove('active');
+            startStormGame();
+        });
+    }
+    if (btnStormBackClassic) {
+        btnStormBackClassic.addEventListener('click', () => {
+            if (stormGameoverModal) stormGameoverModal.classList.remove('active');
+            setPuzzleSubMode('classic');
+        });
     }
 
 
