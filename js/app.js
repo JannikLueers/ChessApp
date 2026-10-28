@@ -648,9 +648,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
         if (selectedSquare === sqName) {
-            selectedSquare = null;
-            wasSelectedBeforePickup = false;
-            updateUI();
+            if (wasSelectedBeforePickup) {
+                selectedSquare = null;
+                wasSelectedBeforePickup = false;
+                updateUI();
+                return;
+            }
             return;
         }
 
@@ -661,6 +664,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     promptPawnPromotion(selectedSquare, sqName, playerColor, (chosenPiece) => {
                         executeMoveWithPromotion(selectedSquare, sqName, chosenPiece);
                         selectedSquare = null;
+                        wasSelectedBeforePickup = false;
                     });
                     return;
                 }
@@ -668,6 +672,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const move = attemptMove(selectedSquare, sqName);
                 if (move) {
                     selectedSquare = null;
+                    wasSelectedBeforePickup = false;
                     return;
                 }
             }
@@ -679,6 +684,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateUI();
         } else {
             selectedSquare = null;
+            wasSelectedBeforePickup = false;
             updateUI();
         }
     }
@@ -687,9 +693,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!analyzedGame) return;
 
         if (selectedSquare === sqName) {
-            selectedSquare = null;
-            wasSelectedBeforePickup = false;
-            updateAnalysisBoardView();
+            if (wasSelectedBeforePickup) {
+                selectedSquare = null;
+                wasSelectedBeforePickup = false;
+                updateAnalysisBoardView();
+                return;
+            }
             return;
         }
 
@@ -701,6 +710,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     promptPawnPromotion(selectedSquare, sqName, sideColor, (chosenPiece) => {
                         executeAnalysisFreeMove(selectedSquare, sqName, chosenPiece);
                         selectedSquare = null;
+                        wasSelectedBeforePickup = false;
                     });
                     return;
                 }
@@ -708,6 +718,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const moved = executeAnalysisFreeMove(selectedSquare, sqName, 'q');
                 if (moved) {
                     selectedSquare = null;
+                    wasSelectedBeforePickup = false;
                     return;
                 }
             }
@@ -719,6 +730,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateAnalysisBoardView();
         } else {
             selectedSquare = null;
+            wasSelectedBeforePickup = false;
             updateAnalysisBoardView();
         }
     }
@@ -748,15 +760,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     promptPawnPromotion(fromSq, toSq, chess.turn(), (chosenPiece) => {
                         executeOpeningHandMove(fromSq, toSq, chosenPiece);
                         selectedSquare = null;
+                        wasSelectedBeforePickup = false;
                     });
                     return;
                 }
                 executeOpeningHandMove(fromSq, toSq, 'q');
                 selectedSquare = null;
+                wasSelectedBeforePickup = false;
                 return;
             }
             if (!practiceIsActive || chess.game_over()) return;
-            if (chess.turn() !== practicePlayerColor) { selectedSquare = null; updateUI(); return; }
+            if (chess.turn() !== practicePlayerColor) { selectedSquare = null; wasSelectedBeforePickup = false; updateUI(); return; }
             if (!fromSq || !toSq || fromSq === toSq || !isLegalMove(fromSq, toSq)) {
                 selectedSquare = fromSq;
                 updateUI();
@@ -767,17 +781,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 promptPawnPromotion(fromSq, toSq, practicePlayerColor, (chosenPiece) => {
                     executePracticeMove(fromSq, toSq, chosenPiece);
                     selectedSquare = null;
+                    wasSelectedBeforePickup = false;
                 });
                 return;
             }
             executePracticeMove(fromSq, toSq, 'q');
             selectedSquare = null;
+            wasSelectedBeforePickup = false;
             return;
         }
 
         if (chess.turn() !== playerColor) {
 
             selectedSquare = null;
+            wasSelectedBeforePickup = false;
             updateUI();
             return;
         }
@@ -794,12 +811,14 @@ document.addEventListener('DOMContentLoaded', () => {
             promptPawnPromotion(fromSq, toSq, playerColor, (chosenPiece) => {
                 executeMoveWithPromotion(fromSq, toSq, chosenPiece);
                 selectedSquare = null;
+                wasSelectedBeforePickup = false;
             });
             return;
         }
 
         attemptMove(fromSq, toSq);
         selectedSquare = null;
+        wasSelectedBeforePickup = false;
     }
 
     function handleAnalysisPieceDrop(fromSq, toSq) {
@@ -818,12 +837,14 @@ document.addEventListener('DOMContentLoaded', () => {
             promptPawnPromotion(fromSq, toSq, sideColor, (chosenPiece) => {
                 executeAnalysisFreeMove(fromSq, toSq, chosenPiece);
                 selectedSquare = null;
+                wasSelectedBeforePickup = false;
             });
             return;
         }
 
         executeAnalysisFreeMove(fromSq, toSq, 'q');
         selectedSquare = null;
+        wasSelectedBeforePickup = false;
     }
 
     function handlePuzzlePieceDrop(fromSq, toSq) {
@@ -838,12 +859,14 @@ document.addEventListener('DOMContentLoaded', () => {
             promptPawnPromotion(fromSq, toSq, chess.turn(), (chosenPiece) => {
                 attemptPuzzleMove(fromSq, toSq, chosenPiece);
                 selectedSquare = null;
+                wasSelectedBeforePickup = false;
             });
             return;
         }
 
         attemptPuzzleMove(fromSq, toSq);
         selectedSquare = null;
+        wasSelectedBeforePickup = false;
     }
 
     function attemptMove(from, to) {
@@ -2682,11 +2705,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handlePuzzleSquareClick(sqName) {
         if (isPuzzleLocked) return;
-        // Clicking the selected piece again always deselects it
+        // Clicking the selected piece again deselects it
         if (selectedSquare === sqName) {
-            selectedSquare = null;
-            wasSelectedBeforePickup = false;
-            updateUI();
+            if (wasSelectedBeforePickup) {
+                selectedSquare = null;
+                wasSelectedBeforePickup = false;
+                updateUI();
+                return;
+            }
             return;
         }
 
@@ -2697,11 +2723,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     promptPawnPromotion(selectedSquare, sqName, chess.turn(), (chosenPiece) => {
                         attemptPuzzleMove(selectedSquare, sqName, chosenPiece);
                         selectedSquare = null;
+                        wasSelectedBeforePickup = false;
                     });
                     return;
                 }
                 attemptPuzzleMove(selectedSquare, sqName);
                 selectedSquare = null;
+                wasSelectedBeforePickup = false;
                 return;
             }
         }
@@ -2712,6 +2740,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateUI();
         } else {
             selectedSquare = null;
+            wasSelectedBeforePickup = false;
             updateUI();
         }
     }
@@ -4227,11 +4256,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleOpeningSquareClick(sqName) {
         if (!isOpeningPracticeActive || !activeOpeningScenario) return;
 
-        // Clicking the selected piece again always deselects it
+        // Clicking the selected piece again deselects it
         if (selectedSquare === sqName) {
-            selectedSquare = null;
-            wasSelectedBeforePickup = false;
-            updateUI();
+            if (wasSelectedBeforePickup) {
+                selectedSquare = null;
+                wasSelectedBeforePickup = false;
+                updateUI();
+                return;
+            }
             return;
         }
 
@@ -4242,11 +4274,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     promptPawnPromotion(selectedSquare, sqName, chess.turn(), (chosenPiece) => {
                         executeOpeningHandMove(selectedSquare, sqName, chosenPiece);
                         selectedSquare = null;
+                        wasSelectedBeforePickup = false;
                     });
                     return;
                 }
                 executeOpeningHandMove(selectedSquare, sqName, 'q');
                 selectedSquare = null;
+                wasSelectedBeforePickup = false;
                 return;
             }
         }
@@ -4256,6 +4290,7 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedSquare = sqName;
         } else {
             selectedSquare = null;
+            wasSelectedBeforePickup = false;
         }
         updateUI();
     }
@@ -4601,9 +4636,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function handlePracticeSquareClick(sqName) {
         // Clicking the selected piece again always deselects it
         if (selectedSquare === sqName) {
-            selectedSquare = null;
-            wasSelectedBeforePickup = false;
-            updateUI();
+            if (wasSelectedBeforePickup) {
+                selectedSquare = null;
+                wasSelectedBeforePickup = false;
+                updateUI();
+                return;
+            }
             return;
         }
 
@@ -4614,11 +4652,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     promptPawnPromotion(selectedSquare, sqName, practicePlayerColor, (chosenPiece) => {
                         executePracticeMove(selectedSquare, sqName, chosenPiece);
                         selectedSquare = null;
+                        wasSelectedBeforePickup = false;
                     });
                     return;
                 }
                 executePracticeMove(selectedSquare, sqName, 'q');
                 selectedSquare = null;
+                wasSelectedBeforePickup = false;
                 return;
             }
         }
@@ -4629,6 +4669,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateUI();
         } else {
             selectedSquare = null;
+            wasSelectedBeforePickup = false;
             updateUI();
         }
     }
