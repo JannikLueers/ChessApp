@@ -168,7 +168,7 @@ main {
 /* Vertical Evaluation Bar */
 .eval-bar-container {
     width: 26px;
-    height: min(calc(100% - 2px), calc(100vh - 106px));
+    height: min(100%, calc(100vh - 106px));
     max-height: 100%;
     background: #1e293b;
     border-radius: 6px;
@@ -253,7 +253,7 @@ main {
 .board-wrapper {
     position: relative;
     width: min(calc(100% - 42px), calc(100vh - 106px));
-    height: min(calc(100% - 42px), calc(100vh - 106px));
+    height: min(100%, calc(100vh - 106px));
     max-width: 100%;
     max-height: 100%;
     aspect-ratio: 1 / 1;
@@ -1207,12 +1207,17 @@ main {
 
     .board-wrapper {
         width: min(calc(100% - 42px), calc(100vh - 84px));
-        height: min(calc(100% - 42px), calc(100vh - 84px));
+        height: min(100%, calc(100vh - 84px));
     }
 
     .eval-bar-container {
         width: 26px;
-        height: min(calc(100% - 42px), calc(100vh - 84px));
+        height: min(100%, calc(100vh - 84px));
+    }
+
+    .board-section.puzzle-fullboard .board-wrapper {
+        width: min(100%, calc(100vh - 84px));
+        height: min(100%, calc(100vh - 84px));
     }
 }
 
