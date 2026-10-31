@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const stormEngine = new PuzzleStormEngine(puzzleManager.puzzles);
     const practiceManager = new PracticeManager();
     const practiceEngine = new StockfishEngine();
+    const campaignManager = typeof BotCampaignManager !== 'undefined' ? new BotCampaignManager() : null;
 
 
     // DOM Elements
@@ -125,8 +126,50 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnStormPlayAgain = document.getElementById('btn-storm-play-again');
     const btnStormBackClassic = document.getElementById('btn-storm-back-classic');
 
+    // Single Player Bot Road Map & Campaign DOM
+    const btnPlaymodeCampaign = document.getElementById('btn-playmode-campaign');
+    const btnPlaymodeCustom = document.getElementById('btn-playmode-custom');
+    const botCampaignView = document.getElementById('bot-campaign-view');
+    const customBotView = document.getElementById('custom-bot-view');
+    const campaignProgressBadge = document.getElementById('campaign-progress-badge');
+    const botShowcaseAvatar = document.getElementById('bot-showcase-avatar');
+    const botShowcaseName = document.getElementById('bot-showcase-name');
+    const botShowcaseStatusBadge = document.getElementById('bot-showcase-status-badge');
+    const botShowcaseElo = document.getElementById('bot-showcase-elo');
+    const botShowcaseStyle = document.getElementById('bot-showcase-style');
+    const botShowcaseQuote = document.getElementById('bot-showcase-quote');
+    const botShowcaseDesc = document.getElementById('bot-showcase-desc');
+    const botShowcaseStats = document.getElementById('bot-showcase-stats');
+    const campaignSelectSide = document.getElementById('campaign-select-side');
+    const btnCampaignStart = document.getElementById('btn-campaign-start');
+    const btnCampaignUndo = document.getElementById('btn-campaign-undo');
+    const btnCampaignFlip = document.getElementById('btn-campaign-flip');
+    const chkCampaignHints = document.getElementById('chk-campaign-hints');
+    const botRoadmapTrack = document.getElementById('bot-roadmap-track');
+    const roadmapTierLabel = document.getElementById('roadmap-tier-label');
+    const botMatchBanner = document.getElementById('bot-match-banner');
+    const botMatchBannerIcon = document.getElementById('bot-match-banner-icon');
+    const botMatchBannerText = document.getElementById('bot-match-banner-text');
+
+    // Bot Campaign Modal DOM
+    const botGameoverModal = document.getElementById('bot-gameover-modal');
+    const bgModalIcon = document.getElementById('bg-modal-icon');
+    const bgModalTitle = document.getElementById('bg-modal-title');
+    const bgModalSubtitle = document.getElementById('bg-modal-subtitle');
+    const bgModalAvatar = document.getElementById('bg-modal-avatar');
+    const bgModalBotName = document.getElementById('bg-modal-bot-name');
+    const bgModalBotElo = document.getElementById('bg-modal-bot-elo');
+    const bgModalBotMoves = document.getElementById('bg-modal-bot-moves');
+    const bgModalMessageBox = document.getElementById('bg-modal-message-box');
+    const bgModalMessageText = document.getElementById('bg-modal-message-text');
+    const btnBgNextBot = document.getElementById('btn-bg-next-bot');
+    const btnBgRematch = document.getElementById('btn-bg-rematch');
+    const btnBgClose = document.getElementById('btn-bg-close');
+
     // App State
     let currentMode = 'play'; // 'play', 'analysis', 'puzzles', or 'practice'
+    let playSubMode = 'campaign'; // 'campaign' or 'custom'
+    let isCampaignMatchActive = false;
     let puzzleSubMode = 'classic'; // 'classic' or 'storm'
     let selectedStormDuration = 3; // 3 or 5
     let stormTimerInterval = null;
@@ -224,6 +267,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     evalEngine.setSkillLevel(20, 3000);
     populateSavedGamesDropdown();
+    initBotCampaignUI();
     initGame();
 
     function initGame() {
@@ -238,6 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (autoNextTimeout) clearTimeout(autoNextTimeout);
         boardRenderer.clearHighlights();
         updateUI();
+        updatePlayerBannerDetails();
         updateEvalBar("0.0", false);
         triggerEngineEvaluation();
     }
@@ -259,7 +304,10 @@ document.addEventListener('DOMContentLoaded', () => {
         practiceIsActive = false;
         isOpeningPracticeActive = false;
         stopOpeningAutoPlay();
-        if (selectSide) {
+        if (playSubMode === 'campaign' && campaignSelectSide) {
+            playerColor = campaignSelectSide.value;
+            setBoardOrientation(playerColor === 'b');
+        } else if (selectSide) {
             playerColor = selectSide.value;
             setBoardOrientation(playerColor === 'b');
         }
@@ -508,6 +556,509 @@ document.addEventListener('DOMContentLoaded', () => {
             triggerEngineEvaluation();
         }
     });
+
+    // --- Single Player Bot Road Map & Campaign Controller ---
+    function initBotCampaignUI() {
+        if (!campaignManager) return;
+
+        // Toggle submodes: Road Map vs Custom Bot
+        if (btnPlaymodeCampaign && btnPlaymodeCustom) {
+            btnPlaymodeCampaign.addEventListener('click', () => {
+                playSubMode = 'campaign';
+                btnPlaymodeCampaign.classList.add('active');
+                btnPlaymodeCustom.classList.remove('active');
+                if (botCampaignView) botCampaignView.style.display = 'block';
+                if (customBotView) customBotView.style.display = 'none';
+                if (campaignSelectSide) {
+                    playerColor = campaignSelectSide.value;
+                    setBoardOrientation(playerColor === 'b');
+                }
+                updatePlayerBannerDetails();
+                updateActiveBotDisplay();
+            });
+
+            btnPlaymodeCustom.addEventListener('click', () => {
+                playSubMode = 'custom';
+                btnPlaymodeCustom.classList.add('active');
+                btnPlaymodeCampaign.classList.remove('active');
+                if (botCampaignView) botCampaignView.style.display = 'none';
+                if (customBotView) customBotView.style.display = 'block';
+                if (selectSide) {
+                    playerColor = selectSide.value;
+                    setBoardOrientation(playerColor === 'b');
+                }
+                updatePlayerBannerDetails();
+            });
+        }
+
+        // Campaign Start / Play vs Bot button
+        if (btnCampaignStart) {
+            btnCampaignStart.addEventListener('click', () => {
+                const activeBot = campaignManager.getActiveBot();
+                let sideChoice = campaignSelectSide ? campaignSelectSide.value : 'w';
+                if (sideChoice === 'random') {
+                    sideChoice = Math.random() < 0.5 ? 'w' : 'b';
+                }
+                playerColor = sideChoice;
+                setBoardOrientation(playerColor === 'b');
+                isCampaignMatchActive = true;
+
+                initGame();
+
+                // Flash board green to give immediate visual feedback of game start
+                if (boardEl) {
+                    boardEl.classList.remove('board-flash-green');
+                    void boardEl.offsetWidth;
+                    boardEl.classList.add('board-flash-green');
+                }
+
+                // Play game start sound
+                sounds.playMove();
+
+                // Update button text to indicate active game
+                btnCampaignStart.innerHTML = '🔄 Restart Match';
+                btnCampaignStart.classList.remove('btn-primary');
+                btnCampaignStart.classList.add('btn');
+
+                updateCampaignMatchBanner();
+                updateActiveBotDisplay();
+
+                if (playerColor === 'b') {
+                    // Bot moves first (Bot is White)
+                    setTimeout(makeAIMove, 300);
+                }
+            });
+        }
+
+        // Campaign Select Side
+        if (campaignSelectSide) {
+            campaignSelectSide.addEventListener('change', (e) => {
+                let sideChoice = e.target.value;
+                if (sideChoice === 'random') {
+                    sideChoice = Math.random() < 0.5 ? 'w' : 'b';
+                }
+                playerColor = sideChoice;
+                if (selectSide) selectSide.value = playerColor;
+                setBoardOrientation(playerColor === 'b');
+                isCampaignMatchActive = false;
+                initGame();
+                updateCampaignMatchBanner();
+            });
+        }
+
+        // Campaign Undo
+        if (btnCampaignUndo) {
+            btnCampaignUndo.addEventListener('click', () => {
+                if (currentMode !== 'play') return;
+                chess.undo();
+                chess.undo();
+                moveHistory.pop();
+                moveHistory.pop();
+                if (gameEvalScores.length > 2) {
+                    gameEvalScores.pop();
+                    gameEvalScores.pop();
+                }
+                selectedSquare = null;
+                updateUI();
+                triggerEngineEvaluation();
+            });
+        }
+
+        // Campaign Flip
+        if (btnCampaignFlip) {
+            btnCampaignFlip.addEventListener('click', () => {
+                setBoardOrientation(!isFlipped);
+                updateUI();
+            });
+        }
+
+        // Campaign Hints
+        if (chkCampaignHints) {
+            chkCampaignHints.addEventListener('change', () => {
+                if (chkShowHints) chkShowHints.checked = chkCampaignHints.checked;
+                if (!chkCampaignHints.checked) {
+                    boardRenderer.clearArrows();
+                } else if (currentMode === 'play') {
+                    triggerEngineEvaluation();
+                }
+            });
+        }
+
+        // Modal Action Buttons
+        if (btnBgClose) {
+            btnBgClose.addEventListener('click', () => {
+                if (botGameoverModal) botGameoverModal.classList.remove('active');
+            });
+        }
+
+        if (btnBgRematch) {
+            btnBgRematch.addEventListener('click', () => {
+                if (botGameoverModal) botGameoverModal.classList.remove('active');
+                initGame();
+                if (playerColor === 'b') {
+                    makeAIMove();
+                }
+            });
+        }
+
+        if (btnBgNextBot) {
+            btnBgNextBot.addEventListener('click', () => {
+                if (botGameoverModal) botGameoverModal.classList.remove('active');
+                selectNextCampaignBot();
+            });
+        }
+
+        updateActiveBotDisplay();
+    }
+
+    function updateActiveBotDisplay() {
+        if (!campaignManager) return;
+        const activeBot = campaignManager.getActiveBot();
+        renderActiveBotShowcase(activeBot);
+        renderBotRoadmapTrack();
+        updatePlayerBannerDetails();
+    }
+
+    function renderActiveBotShowcase(bot) {
+        if (!bot) return;
+        if (botShowcaseAvatar) {
+            botShowcaseAvatar.textContent = bot.avatar;
+            botShowcaseAvatar.style.borderColor = bot.accentColor || 'var(--accent-emerald)';
+        }
+        if (botShowcaseName) botShowcaseName.textContent = bot.name;
+        if (botShowcaseElo) botShowcaseElo.textContent = `⭐ ${bot.elo} Elo`;
+        if (botShowcaseStyle) {
+            botShowcaseStyle.textContent = bot.styleTag;
+            botShowcaseStyle.style.color = bot.accentColor || '#60a5fa';
+        }
+        if (botShowcaseQuote) botShowcaseQuote.textContent = `"${bot.quote}"`;
+        if (botShowcaseDesc) botShowcaseDesc.textContent = bot.description;
+
+        const isDef = campaignManager.isDefeated(bot.id);
+        const stats = campaignManager.getBotStats(bot.id);
+
+        if (botShowcaseStatusBadge) {
+            if (isDef) {
+                botShowcaseStatusBadge.textContent = '👑 Defeated';
+                botShowcaseStatusBadge.className = 'badge badge-theory';
+            } else if (isCampaignMatchActive || moveHistory.length > 0) {
+                botShowcaseStatusBadge.textContent = '🟢 In Match';
+                botShowcaseStatusBadge.className = 'badge badge-best';
+            } else {
+                botShowcaseStatusBadge.textContent = '⚔️ Ready';
+                botShowcaseStatusBadge.className = 'badge badge-good';
+            }
+        }
+
+        if (botShowcaseStats) {
+            const wins = stats.wins || 0;
+            const losses = stats.losses || 0;
+            const draws = stats.draws || 0;
+            let statsText = `Record: ${wins}W - ${losses}L${draws > 0 ? ` - ${draws}D` : ''}`;
+            if (stats.bestMoves) {
+                statsText += ` • Best: ${stats.bestMoves} moves`;
+            }
+            botShowcaseStats.textContent = statsText;
+        }
+
+        if (campaignProgressBadge) {
+            const defeatedCount = campaignManager.state.defeatedBots.length;
+            campaignProgressBadge.textContent = `Bots: ${defeatedCount}/${BOT_ROSTER.length} Defeated`;
+        }
+
+        if (roadmapTierLabel) {
+            roadmapTierLabel.textContent = `Tier ${bot.tier}: ${bot.tierName}`;
+        }
+    }
+
+    function renderBotRoadmapTrack() {
+        if (!campaignManager || !botRoadmapTrack) return;
+        botRoadmapTrack.innerHTML = '';
+
+        const allBots = campaignManager.getAllBots();
+        const activeBot = campaignManager.getActiveBot();
+
+        allBots.forEach((bot) => {
+            const isUnlocked = campaignManager.isUnlocked(bot.id);
+            const isDefeated = campaignManager.isDefeated(bot.id);
+            const isActive = (bot.id === activeBot.id);
+
+            const tile = document.createElement('div');
+            tile.className = 'bot-card-tile';
+            if (isActive) tile.classList.add('active');
+            if (isDefeated) tile.classList.add('defeated');
+            if (!isUnlocked) tile.classList.add('locked');
+
+            let badgeIcon = '⚔️';
+            if (!isUnlocked) badgeIcon = '🔒';
+            else if (isDefeated) badgeIcon = '👑';
+
+            tile.innerHTML = `
+                <div class="bot-tile-avatar-wrap">
+                    <div class="bot-tile-avatar" style="${bot.accentColor ? `border-color: ${bot.accentColor}` : ''}">${bot.avatar}</div>
+                    <span class="bot-tile-badge">${badgeIcon}</span>
+                </div>
+                <div class="bot-tile-name" title="${bot.name}">${bot.name}</div>
+                <div class="bot-tile-meta">⭐ ${bot.elo}</div>
+                <div class="bot-tile-style" style="${bot.accentColor ? `color: ${bot.accentColor}` : ''}">${bot.styleTag.split(' ')[1] || bot.styleTag}</div>
+            `;
+
+            if (isUnlocked) {
+                tile.addEventListener('click', () => {
+                    selectCampaignBot(bot.id);
+                });
+            }
+
+            botRoadmapTrack.appendChild(tile);
+        });
+    }
+
+    function selectCampaignBot(botId) {
+        if (!campaignManager) return;
+        if (campaignManager.setActiveBot(botId)) {
+            isCampaignMatchActive = false;
+            updateActiveBotDisplay();
+            initGame();
+            updateCampaignMatchBanner();
+        }
+    }
+
+    function selectNextCampaignBot() {
+        if (!campaignManager) return;
+        const allBots = campaignManager.getAllBots();
+        const activeBot = campaignManager.getActiveBot();
+        const currentIndex = allBots.findIndex(b => b.id === activeBot.id);
+        if (currentIndex !== -1 && currentIndex + 1 < allBots.length) {
+            const nextBot = allBots[currentIndex + 1];
+            if (campaignManager.isUnlocked(nextBot.id)) {
+                selectCampaignBot(nextBot.id);
+            }
+        }
+    }
+
+    function updateCampaignMatchBanner() {
+        if (!botMatchBanner || !campaignManager) return;
+        const activeBot = campaignManager.getActiveBot();
+
+        if (chess.game_over()) {
+            botMatchBanner.className = 'bot-match-banner';
+            if (chess.in_checkmate()) {
+                const playerWon = (chess.turn() !== playerColor);
+                if (botMatchBannerIcon) botMatchBannerIcon.textContent = playerWon ? '🏆' : '💔';
+                if (botMatchBannerText) {
+                    botMatchBannerText.innerHTML = playerWon
+                        ? `<strong>Victory!</strong> You defeated ${activeBot.name}!`
+                        : `<strong>Defeat!</strong> ${activeBot.name} won by checkmate.`;
+                }
+            } else {
+                if (botMatchBannerIcon) botMatchBannerIcon.textContent = '🤝';
+                if (botMatchBannerText) botMatchBannerText.innerHTML = `<strong>Draw / Stalemate</strong> against ${activeBot.name}.`;
+            }
+            if (btnCampaignStart) {
+                btnCampaignStart.innerHTML = '⚔️ Start Match';
+                btnCampaignStart.classList.add('btn-primary');
+                btnCampaignStart.classList.remove('btn');
+            }
+            return;
+        }
+
+        if (!isCampaignMatchActive && moveHistory.length === 0) {
+            botMatchBanner.className = 'bot-match-banner';
+            if (botMatchBannerIcon) botMatchBannerIcon.textContent = '⚔️';
+            if (botMatchBannerText) {
+                botMatchBannerText.innerHTML = `Ready to challenge <strong>${activeBot.name}</strong> (${activeBot.elo} Elo)! Click <strong>'Start Match'</strong> below.`;
+            }
+            if (btnCampaignStart) {
+                btnCampaignStart.innerHTML = '⚔️ Start Match';
+                btnCampaignStart.classList.add('btn-primary');
+                btnCampaignStart.classList.remove('btn');
+            }
+            return;
+        }
+
+        const isPlayerTurn = (chess.turn() === playerColor);
+        if (isPlayerTurn) {
+            botMatchBanner.className = 'bot-match-banner active-match';
+            if (botMatchBannerIcon) botMatchBannerIcon.textContent = '👉';
+            const sideName = playerColor === 'w' ? 'White' : 'Black';
+            if (botMatchBannerText) {
+                botMatchBannerText.innerHTML = `<strong>Your Turn (${sideName}):</strong> Move any piece on the board!`;
+            }
+        } else {
+            botMatchBanner.className = 'bot-match-banner bot-thinking';
+            if (botMatchBannerIcon) botMatchBannerIcon.textContent = '⏳';
+            if (botMatchBannerText) {
+                botMatchBannerText.innerHTML = `<strong>${activeBot.name} is thinking...</strong> (${activeBot.styleTag})`;
+            }
+        }
+    }
+
+    function updatePlayerBannerDetails() {
+        if (currentMode === 'analysis' && analyzedGame) {
+            return;
+        }
+
+        const blackNameEl = document.getElementById('black-name');
+        const blackRatingEl = document.getElementById('black-rating');
+        const blackAvatarEl = document.getElementById('black-avatar');
+        const whiteNameEl = document.getElementById('white-name');
+        const whiteRatingEl = document.getElementById('white-rating');
+        const whiteAvatarEl = document.getElementById('white-avatar');
+
+        if (!blackNameEl || !whiteNameEl) return;
+
+        if (currentMode === 'play') {
+            if (playSubMode === 'campaign' && campaignManager) {
+                const activeBot = campaignManager.getActiveBot();
+                if (playerColor === 'w') {
+                    blackNameEl.textContent = activeBot.name;
+                    blackRatingEl.textContent = `${activeBot.elo} Elo • ${activeBot.styleTag}`;
+                    blackAvatarEl.textContent = activeBot.avatar;
+                    blackAvatarEl.style.borderColor = activeBot.accentColor || 'var(--accent-emerald)';
+
+                    whiteNameEl.textContent = 'Player';
+                    whiteRatingEl.textContent = 'You (White)';
+                    whiteAvatarEl.textContent = '♔';
+                    whiteAvatarEl.style.borderColor = '';
+                } else {
+                    whiteNameEl.textContent = activeBot.name;
+                    whiteRatingEl.textContent = `${activeBot.elo} Elo • ${activeBot.styleTag}`;
+                    whiteAvatarEl.textContent = activeBot.avatar;
+                    whiteAvatarEl.style.borderColor = activeBot.accentColor || 'var(--accent-emerald)';
+
+                    blackNameEl.textContent = 'Player';
+                    blackRatingEl.textContent = 'You (Black)';
+                    blackAvatarEl.textContent = '♚';
+                    blackAvatarEl.style.borderColor = '';
+                }
+            } else {
+                const diffLabels = { 1: 'Beginner (~800)', 4: 'Intermediate (~1400)', 8: 'Advanced (~1800)', 14: 'Grandmaster (2500+)' };
+                const diffName = diffLabels[selectDifficulty ? selectDifficulty.value : 4] || 'Intermediate (~1400)';
+                if (playerColor === 'w') {
+                    blackNameEl.textContent = 'Stockfish AI';
+                    blackRatingEl.textContent = diffName;
+                    blackAvatarEl.textContent = '♟';
+                    blackAvatarEl.style.borderColor = '';
+
+                    whiteNameEl.textContent = 'Player';
+                    whiteRatingEl.textContent = 'You (White)';
+                    whiteAvatarEl.textContent = '♔';
+                    whiteAvatarEl.style.borderColor = '';
+                } else {
+                    whiteNameEl.textContent = 'Stockfish AI';
+                    whiteRatingEl.textContent = diffName;
+                    whiteAvatarEl.textContent = '♟';
+                    whiteAvatarEl.style.borderColor = '';
+
+                    blackNameEl.textContent = 'Player';
+                    blackRatingEl.textContent = 'You (Black)';
+                    blackAvatarEl.textContent = '♚';
+                    blackAvatarEl.style.borderColor = '';
+                }
+            }
+        }
+    }
+
+    function checkCampaignGameOver() {
+        if (currentMode !== 'play' || playSubMode !== 'campaign' || !campaignManager) return;
+        if (!chess.game_over() || !botGameoverModal) return;
+
+        const activeBot = campaignManager.getActiveBot();
+        const movesCount = moveHistory.length;
+
+        if (chess.in_checkmate()) {
+            const loser = chess.turn();
+            const playerWon = (loser !== playerColor);
+
+            if (playerWon) {
+                sounds.playStormSuccess();
+                const winRes = campaignManager.recordWin(activeBot.id, movesCount);
+
+                if (bgModalIcon) bgModalIcon.textContent = '🎉';
+                if (bgModalTitle) bgModalTitle.textContent = 'Bot Defeated!';
+                if (bgModalSubtitle) bgModalSubtitle.textContent = `You checkmated ${activeBot.name}!`;
+                if (bgModalAvatar) {
+                    bgModalAvatar.textContent = activeBot.avatar;
+                    bgModalAvatar.style.borderColor = activeBot.accentColor || 'var(--accent-emerald)';
+                }
+                if (bgModalBotName) bgModalBotName.textContent = activeBot.name;
+                if (bgModalBotElo) bgModalBotElo.textContent = `⭐ ${activeBot.elo} Elo`;
+                if (bgModalBotMoves) bgModalBotMoves.textContent = `${movesCount} Moves`;
+
+                if (bgModalMessageBox && bgModalMessageText) {
+                    if (winRes.newlyUnlockedBot) {
+                        bgModalMessageBox.style.background = 'rgba(16, 185, 129, 0.15)';
+                        bgModalMessageBox.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                        bgModalMessageText.innerHTML = `🔓 <strong>Next Challenger Unlocked:</strong> ${winRes.newlyUnlockedBot.name} (~${winRes.newlyUnlockedBot.elo} Elo) is now unlocked on your Road Map!`;
+                        if (btnBgNextBot) {
+                            btnBgNextBot.style.display = 'block';
+                            btnBgNextBot.textContent = `⏭️ Challenge ${winRes.newlyUnlockedBot.name.split(' ')[0]}`;
+                        }
+                    } else if (winRes.allCompleted) {
+                        bgModalMessageBox.style.background = 'rgba(245, 158, 11, 0.2)';
+                        bgModalMessageBox.style.borderColor = 'rgba(245, 158, 11, 0.5)';
+                        bgModalMessageText.innerHTML = `👑 <strong>ULTIMATE CHAMPION!</strong> You have defeated every single bot on the Road Map! 🏆`;
+                        if (btnBgNextBot) btnBgNextBot.style.display = 'none';
+                    } else {
+                        bgModalMessageBox.style.background = 'rgba(16, 185, 129, 0.15)';
+                        bgModalMessageBox.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                        bgModalMessageText.innerHTML = `⭐ <strong>Victory Recorded!</strong> Try beating ${activeBot.name} again in fewer moves!`;
+                        if (btnBgNextBot) btnBgNextBot.style.display = 'none';
+                    }
+                }
+
+                updateActiveBotDisplay();
+                botGameoverModal.classList.add('active');
+            } else {
+                sounds.playBlunder();
+                campaignManager.recordLoss(activeBot.id);
+
+                if (bgModalIcon) bgModalIcon.textContent = '💔';
+                if (bgModalTitle) bgModalTitle.textContent = 'Defeat!';
+                if (bgModalSubtitle) bgModalSubtitle.textContent = `${activeBot.name} delivered checkmate.`;
+                if (bgModalAvatar) {
+                    bgModalAvatar.textContent = activeBot.avatar;
+                    bgModalAvatar.style.borderColor = '#ef4444';
+                }
+                if (bgModalBotName) bgModalBotName.textContent = activeBot.name;
+                if (bgModalBotElo) bgModalBotElo.textContent = `⭐ ${activeBot.elo} Elo`;
+                if (bgModalBotMoves) bgModalBotMoves.textContent = `${movesCount} Moves`;
+
+                if (bgModalMessageBox && bgModalMessageText) {
+                    bgModalMessageBox.style.background = 'rgba(239, 68, 68, 0.12)';
+                    bgModalMessageBox.style.borderColor = 'rgba(239, 68, 68, 0.35)';
+                    bgModalMessageText.innerHTML = `💡 <strong>Coach's Tip vs ${activeBot.name}:</strong> ${activeBot.tipOnLoss}`;
+                }
+                if (btnBgNextBot) btnBgNextBot.style.display = 'none';
+
+                updateActiveBotDisplay();
+                botGameoverModal.classList.add('active');
+            }
+        } else {
+            campaignManager.recordDraw(activeBot.id);
+
+            if (bgModalIcon) bgModalIcon.textContent = '🤝';
+            if (bgModalTitle) bgModalTitle.textContent = 'Draw / Stalemate';
+            if (bgModalSubtitle) bgModalSubtitle.textContent = `Game drawn against ${activeBot.name}.`;
+            if (bgModalAvatar) {
+                bgModalAvatar.textContent = activeBot.avatar;
+                bgModalAvatar.style.borderColor = '#eab308';
+            }
+            if (bgModalBotName) bgModalBotName.textContent = activeBot.name;
+            if (bgModalBotElo) bgModalBotElo.textContent = `⭐ ${activeBot.elo} Elo`;
+            if (bgModalBotMoves) bgModalBotMoves.textContent = `${movesCount} Moves`;
+
+            if (bgModalMessageBox && bgModalMessageText) {
+                bgModalMessageBox.style.background = 'rgba(245, 158, 11, 0.12)';
+                bgModalMessageBox.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+                bgModalMessageText.innerHTML = `⚖️ <strong>Draw:</strong> A hard-fought battle! Rematch to claim victory.`;
+            }
+            if (btnBgNextBot) btnBgNextBot.style.display = 'none';
+
+            updateActiveBotDisplay();
+            botGameoverModal.classList.add('active');
+        }
+    }
 
     // --- Pawn Promotion Choice Interceptor ---
     function checkIsPromotionMove(from, to) {
@@ -885,10 +1436,17 @@ document.addEventListener('DOMContentLoaded', () => {
             else sounds.playMove();
 
             moveHistory.push(moveObj);
+            if (currentMode === 'play' && playSubMode === 'campaign') {
+                isCampaignMatchActive = true;
+            }
             updateUI();
             triggerEngineEvaluation(moveObj);
 
-            if (!chess.game_over() && chess.turn() !== playerColor) {
+            if (chess.game_over()) {
+                if (currentMode === 'play' && playSubMode === 'campaign') {
+                    setTimeout(checkCampaignGameOver, 500);
+                }
+            } else if (chess.turn() !== playerColor) {
                 setTimeout(makeAIMove, 400);
             }
             return true;
@@ -896,23 +1454,35 @@ document.addEventListener('DOMContentLoaded', () => {
         return false;
     }
 
-    // AI Bot Move Logic (Bulletproof Execution with Fallback Timer)
+    // AI Bot Move Logic (Bulletproof Execution with Multi-PV Bot Personalities)
     function makeAIMove() {
         if (chess.game_over() || chess.turn() === playerColor) return;
 
-        const diffLevel = parseInt(selectDifficulty.value, 10);
         let depth = 4;
         let skillLevel = 6;
         let targetElo = 1400;
+        let multiPv = 1;
+        let activeCampaignBot = null;
+        let diffLevel = 4;
 
-        if (diffLevel === 1) { // Beginner (~800 ELO)
-            depth = 1; skillLevel = 0; targetElo = 700;
-        } else if (diffLevel === 4) { // Intermediate (~1400 ELO)
-            depth = 4; skillLevel = 6; targetElo = 1400;
-        } else if (diffLevel === 8) { // Advanced (~1800 ELO)
-            depth = 8; skillLevel = 12; targetElo = 1800;
-        } else { // Grandmaster (2500+ ELO)
-            depth = 12; skillLevel = 20; targetElo = 2800;
+        if (playSubMode === 'campaign' && campaignManager) {
+            activeCampaignBot = campaignManager.getActiveBot();
+            const es = activeCampaignBot.engineSettings || {};
+            depth = es.depth || 4;
+            skillLevel = es.skillLevel !== undefined ? es.skillLevel : 6;
+            targetElo = es.targetElo || 1400;
+            multiPv = es.multiPv || 3;
+        } else {
+            diffLevel = selectDifficulty ? parseInt(selectDifficulty.value, 10) : 4;
+            if (diffLevel === 1) { // Beginner (~800 ELO)
+                depth = 1; skillLevel = 0; targetElo = 700;
+            } else if (diffLevel === 4) { // Intermediate (~1400 ELO)
+                depth = 4; skillLevel = 6; targetElo = 1400;
+            } else if (diffLevel === 8) { // Advanced (~1800 ELO)
+                depth = 8; skillLevel = 12; targetElo = 1800;
+            } else { // Grandmaster (2500+ ELO)
+                depth = 12; skillLevel = 20; targetElo = 2800;
+            }
         }
 
         let botMoved = false;
@@ -929,10 +1499,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 moveHistory.push(moveObj);
                 updateUI();
                 triggerEngineEvaluation(moveObj);
+
+                if (chess.game_over()) {
+                    if (currentMode === 'play' && playSubMode === 'campaign') {
+                        setTimeout(checkCampaignGameOver, 500);
+                    }
+                }
             }
         }
 
-        // Safety fallback timer: Ensure bot always moves within 900ms
+        // Safety fallback timer: Ensure bot always moves within 1000ms
         const fallbackTimer = setTimeout(() => {
             if (botMoved || chess.turn() === playerColor) return;
             const legalMoves = chess.moves({ verbose: true });
@@ -940,18 +1516,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const choice = legalMoves[Math.floor(Math.random() * legalMoves.length)];
                 executeBotMove(choice.from, choice.to, choice.promotion || 'q');
             }
-        }, 900);
+        }, 1000);
 
         botEngine.setSkillLevel(skillLevel, targetElo);
 
-        botEngine.getBestMove(chess.fen(), depth, (bestMoveStr) => {
+        botEngine.getBestMove(chess.fen(), depth, (bestMoveStr, candidateMoves) => {
             clearTimeout(fallbackTimer);
             if (botMoved || !bestMoveStr || chess.turn() === playerColor) return;
 
             let chosenMove = bestMoveStr;
             const legalMoves = chess.moves({ verbose: true });
 
-            if (diffLevel === 1 && Math.random() < 0.35 && legalMoves.length > 0) {
+            if (playSubMode === 'campaign' && activeCampaignBot && typeof BotMoveSelector !== 'undefined') {
+                chosenMove = BotMoveSelector.selectBotMove(activeCampaignBot, chess, candidateMoves, bestMoveStr);
+            } else if (diffLevel === 1 && Math.random() < 0.35 && legalMoves.length > 0) {
                 const randomMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
                 chosenMove = randomMove.from + randomMove.to;
             }
@@ -968,7 +1546,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const choice = legalMoves[Math.floor(Math.random() * legalMoves.length)];
                 executeBotMove(choice.from, choice.to, choice.promotion || 'q');
             }
-        });
+        }, null, multiPv);
     }
 
     // Evaluation Bar Buffering & Real-Time Depth 14 Analysis Tracking
@@ -1009,7 +1587,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             prevEvalScore = evalRes.score;
 
-            if (currentMode === 'play' && chkShowHints.checked && evalRes.bestMove && chess.turn() === playerColor) {
+            const showHints = (chkShowHints && chkShowHints.checked) || (chkCampaignHints && chkCampaignHints.checked);
+            if (currentMode === 'play' && showHints && evalRes.bestMove && chess.turn() === playerColor) {
                 const from = evalRes.bestMove.substring(0, 2);
                 const to = evalRes.bestMove.substring(2, 4);
                 boardRenderer.drawArrow(from, to, '#10b981', 10);
@@ -4713,6 +5292,9 @@ document.addEventListener('DOMContentLoaded', () => {
             else sounds.playMove();
 
             moveHistory.push(moveObj);
+            if (currentMode === 'play' && playSubMode === 'campaign') {
+                isCampaignMatchActive = true;
+            }
             updateUI();
             triggerPracticeEvaluation();
 
@@ -5045,8 +5627,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     turnIndicator.style.color = "var(--accent-amber)";
                 }
             } else {
-                turnIndicator.textContent = chess.turn() === 'w' ? "WHITE'S TURN" : "BLACK'S TURN";
-                turnIndicator.style.color = "var(--accent-emerald)";
+                if (currentMode === 'play' && playSubMode === 'campaign' && campaignManager) {
+                    const activeBot = campaignManager.getActiveBot();
+                    if (chess.turn() === playerColor) {
+                        const sideName = playerColor === 'w' ? "WHITE" : "BLACK";
+                        turnIndicator.innerHTML = `<span class="turn-pulse">👉</span> YOUR TURN (${sideName}) — MOVE A PIECE`;
+                        turnIndicator.style.color = "var(--accent-emerald)";
+                    } else {
+                        turnIndicator.innerHTML = `<span class="turn-pulse">⏳</span> ${activeBot.name.toUpperCase()} IS THINKING...`;
+                        turnIndicator.style.color = "var(--accent-amber)";
+                    }
+                } else {
+                    turnIndicator.textContent = chess.turn() === 'w' ? "WHITE'S TURN" : "BLACK'S TURN";
+                    turnIndicator.style.color = "var(--accent-emerald)";
+                }
             }
         }
 
@@ -5056,6 +5650,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         renderMoveTable();
         updateCapturedPiecesTracker();
+        updatePlayerBannerDetails();
+        updateCampaignMatchBanner();
     }
 
     function renderMoveTable() {

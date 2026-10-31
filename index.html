@@ -165,40 +165,128 @@
             <!-- Single Player Controls Panel (Active in Play Mode) -->
             <div id="play-controls-card" class="card">
                 <div class="card-title">
-                    <span>Single Player Settings</span>
-                    <span style="font-size: 0.75rem; color: var(--text-muted);">Stockfish v10</span>
+                    <span>Single Player Mode</span>
+                    <span id="campaign-progress-badge" style="font-size: 0.72rem; color: var(--accent-emerald); font-weight: 700;">Bots: 0/10 Defeated</span>
                 </div>
 
-                <div class="control-grid">
-                    <div>
-                        <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 3px;">AI Difficulty</label>
-                        <select id="select-difficulty" class="select-field">
-                            <option value="1">Beginner (~800)</option>
-                            <option value="4" selected>Intermediate (~1400)</option>
-                            <option value="8">Advanced (~1800)</option>
-                            <option value="14">Grandmaster (2500+)</option>
-                        </select>
+                <!-- Sub-Mode Selector: Bot Road Map vs Custom Bot -->
+                <div class="puzzle-submode-nav" style="display: flex; gap: 0.35rem; margin-bottom: 0.65rem; border-bottom: 1px solid var(--border-glass); padding-bottom: 0.45rem;">
+                    <button id="btn-playmode-campaign" class="practice-pill active" type="button">🗺️ Bot Road Map</button>
+                    <button id="btn-playmode-custom" class="practice-pill" type="button">⚙️ Custom Bot</button>
+                </div>
+
+                <!-- 1. Bot Campaign Road Map View -->
+                <div id="bot-campaign-view">
+                    <!-- Active Bot Hero / Showcase Card -->
+                    <div id="active-bot-showcase" class="active-bot-showcase">
+                        <div class="bot-showcase-header">
+                            <div id="bot-showcase-avatar" class="bot-showcase-avatar">🤪</div>
+                            <div class="bot-showcase-meta">
+                                <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                                    <span id="bot-showcase-name" class="bot-showcase-name">Pawn Stormer Pete</span>
+                                    <span id="bot-showcase-status-badge" class="badge badge-good">⚔️ Ready</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.4rem; margin-top: 3px; flex-wrap: wrap;">
+                                    <span id="bot-showcase-elo" class="bot-badge-elo">⭐ 600 Elo</span>
+                                    <span id="bot-showcase-style" class="bot-badge-style">🔥 Ultra-Aggressive</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bot Quote / Short statement describing style -->
+                        <div id="bot-showcase-quote" class="bot-showcase-quote">
+                            "Attack first, think about defense never! Forward march!"
+                        </div>
+
+                        <!-- Brief play style description -->
+                        <div id="bot-showcase-desc" class="bot-showcase-desc">
+                            Recklessly charges pawns forward and attacks with his queen early. Often leaves pieces undefended.
+                        </div>
+
+                        <!-- Match Status & Coaching Banner -->
+                        <div id="bot-match-banner" class="bot-match-banner">
+                            <span id="bot-match-banner-icon">⚔️</span>
+                            <span id="bot-match-banner-text">Ready to challenge Pawn Stormer Pete! Click 'Start Match' below to begin.</span>
+                        </div>
+
+                        <!-- Head-to-head match stats summary -->
+                        <div id="bot-showcase-stats" class="bot-showcase-stats" style="margin-top: 0.4rem;">
+                            <span>Record: 0W - 0L</span>
+                        </div>
                     </div>
-                    <div>
-                        <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 3px;">Your Side</label>
-                        <select id="select-side" class="select-field">
-                            <option value="w" selected>White</option>
-                            <option value="b">Black</option>
-                        </select>
+
+                    <!-- Quick Match Controls for Campaign -->
+                    <div class="control-grid" style="margin-top: 0.5rem; margin-bottom: 0.5rem;">
+                        <div>
+                            <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 3px;">Your Side</label>
+                            <select id="campaign-select-side" class="select-field">
+                                <option value="w" selected>♔ White (You move 1st)</option>
+                                <option value="b">♚ Black (Bot moves 1st)</option>
+                                <option value="random">🎲 Random Side</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; align-items: flex-end;">
+                            <button id="btn-campaign-start" class="btn btn-primary" style="width: 100%; height: 36px; font-weight: 700;">⚔️ Start Match</button>
+                        </div>
+                    </div>
+
+                    <div class="control-grid" style="margin-bottom: 0.5rem;">
+                        <button id="btn-campaign-undo" class="btn">↩ Undo Move</button>
+                        <button id="btn-campaign-flip" class="btn">🔄 Flip Board</button>
+                    </div>
+
+                    <!-- Engine Hint Arrow Toggle -->
+                    <label class="checkbox-field" style="margin-bottom: 0.75rem;">
+                        <input type="checkbox" id="chk-campaign-hints">
+                        <span>💡 Show Best Move Arrow Hint</span>
+                    </label>
+
+                    <!-- Road Map Sequence Track / Carousel -->
+                    <div class="bot-roadmap-section">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                            <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em;">Bot Road Map Path</span>
+                            <span id="roadmap-tier-label" style="font-size: 0.68rem; color: var(--accent-emerald);">Tier 1: Novices</span>
+                        </div>
+
+                        <div id="bot-roadmap-track" class="bot-roadmap-track">
+                            <!-- Populated dynamically by JS -->
+                        </div>
                     </div>
                 </div>
 
-                <div class="control-grid">
-                    <button id="btn-new-game" class="btn btn-primary">➕ New Game</button>
-                    <button id="btn-undo" class="btn">↩ Undo Move</button>
-                </div>
-                <button id="btn-flip" class="btn" style="width: 100%; margin-bottom: 0.5rem;">🔄 Flip Board View</button>
+                <!-- 2. Classic Custom Bot Free Play View -->
+                <div id="custom-bot-view" style="display: none;">
+                    <div class="control-grid">
+                        <div>
+                            <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 3px;">AI Difficulty</label>
+                            <select id="select-difficulty" class="select-field">
+                                <option value="1">Beginner (~800)</option>
+                                <option value="4" selected>Intermediate (~1400)</option>
+                                <option value="8">Advanced (~1800)</option>
+                                <option value="14">Grandmaster (2500+)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 3px;">Your Side</label>
+                            <select id="select-side" class="select-field">
+                                <option value="w" selected>White</option>
+                                <option value="b">Black</option>
+                            </select>
+                        </div>
+                    </div>
 
-                <!-- Engine Hint Arrow Toggle -->
-                <label class="checkbox-field">
-                    <input type="checkbox" id="chk-show-hints">
-                    <span>💡 Show Best Move Arrow Hint</span>
-                </label>
+                    <div class="control-grid">
+                        <button id="btn-new-game" class="btn btn-primary">➕ New Game</button>
+                        <button id="btn-undo" class="btn">↩ Undo Move</button>
+                    </div>
+                    <button id="btn-flip" class="btn" style="width: 100%; margin-bottom: 0.5rem;">🔄 Flip Board View</button>
+
+                    <!-- Engine Hint Arrow Toggle -->
+                    <label class="checkbox-field">
+                        <input type="checkbox" id="chk-show-hints">
+                        <span>💡 Show Best Move Arrow Hint</span>
+                    </label>
+                </div>
             </div>
 
             <!-- Analysis Mode Toolbar & Evaluation Graph (Active in Analysis Mode) -->
@@ -836,9 +924,48 @@
         </div>
     </div>
 
+    <!-- Bot Campaign Victory / Defeat Modal -->
+    <div id="bot-gameover-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width: 440px; text-align: center; padding: 1.5rem;">
+            <div id="bg-modal-icon" style="font-size: 2.8rem; margin-bottom: 0.35rem;">🎉</div>
+            <h2 id="bg-modal-title" style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.2rem;">Bot Defeated!</h2>
+            <div id="bg-modal-subtitle" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">You defeated Pawn Stormer Pete!</div>
+
+            <!-- Bot Card Highlight in Modal -->
+            <div id="bg-modal-bot-card" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 0.75rem 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.75rem; text-align: left;">
+                <div id="bg-modal-avatar" style="font-size: 2.2rem; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; background: rgba(255, 255, 255, 0.06); border-radius: 50%; border: 2px solid var(--accent-emerald);">🤪</div>
+                <div>
+                    <div id="bg-modal-bot-name" style="font-weight: 800; font-size: 0.95rem; color: var(--text-primary);">Pawn Stormer Pete</div>
+                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 2px;">
+                        <span id="bg-modal-bot-elo">⭐ 600 Elo</span> &nbsp;•&nbsp; <span id="bg-modal-bot-moves">28 Moves</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Unlocked Next Bot Callout / Tip Callout -->
+            <div id="bg-modal-message-box" style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-sm); padding: 0.6rem 0.8rem; margin-bottom: 1rem; font-size: 0.76rem; color: var(--text-secondary); text-align: left; line-height: 1.4;">
+                <span id="bg-modal-message-text">🔓 <strong>Next Challenger Unlocked:</strong> Cautious Clara (~800 Elo) is waiting for you!</span>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 0.5rem;">
+                <button id="btn-bg-next-bot" class="btn btn-primary" type="button" style="flex: 1; padding: 0.6rem; font-weight: 700; font-size: 0.85rem;">
+                    ⏭️ Next Bot
+                </button>
+                <button id="btn-bg-rematch" class="btn" type="button" style="flex: 1; padding: 0.6rem; font-size: 0.85rem;">
+                    🔄 Rematch
+                </button>
+                <button id="btn-bg-close" class="btn" type="button" style="padding: 0.6rem 0.75rem; font-size: 0.85rem;" title="Close">
+                    ✕
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="js/chess.min.js"></script>
     <script src="js/stockfishEngine.js?v=3.1"></script>
+    <script src="js/bots.js?v=1.0"></script>
     <script src="js/openings.js?v=3.1"></script>
     <script src="js/pieces.js?v=2.3"></script>
     <script src="js/boardRenderer.js?v=2.6"></script>
@@ -846,7 +973,7 @@
     <script src="js/puzzles.js?v=2.4"></script>
     <script src="js/audio.js?v=2.4"></script>
     <script src="js/practice.js?v=2.6"></script>
-    <script src="js/app.js?v=3.3"></script>
+    <script src="js/app.js?v=3.4"></script>
 
 </body>
 </html>

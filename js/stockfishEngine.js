@@ -54,12 +54,17 @@ class StockfishEngine {
         this.send(`go depth ${depth}`);
     }
 
-    getBestMove(fen, depth = 12, callback = null, movetime = null) {
+    getBestMove(fen, depth = 12, callback = null, movetime = null, multiPV = 1) {
         this.currentEval = { score: "0.0", isMate: false, mateIn: 0, bestMove: null, multipv: [], pvLine: [] };
         this.onBestMoveCallback = callback;
         const parts = fen.split(' ');
         this.evalSideToMove = parts[1] || 'w';
         this.send('stop');
+        if (multiPV > 1) {
+            this.send(`setoption name MultiPV value ${multiPV}`);
+        } else {
+            this.send(`setoption name MultiPV value 1`);
+        }
         this.send(`position fen ${fen}`);
         if (movetime && movetime > 0) {
             this.send(`go depth ${depth} movetime ${movetime}`);
@@ -135,7 +140,10 @@ class StockfishEngine {
             if (this.onBestMoveCallback) {
                 const cb = this.onBestMoveCallback;
                 this.onBestMoveCallback = null;
-                cb(validMove);
+                const candidates = (this.currentEval.multipv && this.currentEval.multipv.length > 0)
+                    ? [...this.currentEval.multipv]
+                    : (validMove ? [validMove] : []);
+                cb(validMove, candidates);
             }
         }
     }

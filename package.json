@@ -5,6 +5,7 @@
   "main": "index.html",
   "scripts": {
     "prepare": "node sync_www.js",
+    "serve": "node serve.js",
     "sync": "node sync_www.js && cap sync",
     "cap:add:android": "cap add android",
     "cap:open": "cap open android"

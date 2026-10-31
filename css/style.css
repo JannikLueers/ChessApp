@@ -2841,4 +2841,276 @@ main {
     }
 }
 
+/* ==========================================================================
+   Single Player Bot Road Map & Campaign Styles
+   ========================================================================== */
+
+.active-bot-showcase {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    padding: 0.65rem 0.75rem;
+    margin-bottom: 0.4rem;
+    transition: all 0.25s ease;
+}
+
+.active-bot-showcase:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.bot-showcase-header {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    margin-bottom: 0.4rem;
+}
+
+.bot-showcase-avatar {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 2px solid var(--accent-emerald);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    transition: transform 0.2s ease;
+}
+
+.bot-showcase-meta {
+    flex: 1;
+    min-width: 0;
+}
+
+.bot-showcase-name {
+    font-weight: 800;
+    font-size: 0.92rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bot-badge-elo {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--accent-amber);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.bot-badge-style {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.bot-showcase-quote {
+    font-size: 0.74rem;
+    font-style: italic;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.02);
+    border-left: 3px solid var(--accent-emerald);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    padding: 0.3rem 0.55rem;
+    margin-bottom: 0.35rem;
+    line-height: 1.35;
+}
+
+.bot-showcase-desc {
+    font-size: 0.70rem;
+    color: var(--text-muted);
+    line-height: 1.35;
+    margin-bottom: 0.35rem;
+}
+
+.bot-showcase-stats {
+    font-size: 0.66rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.bot-match-banner {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: var(--radius-sm);
+    padding: 0.4rem 0.6rem;
+    font-size: 0.72rem;
+    color: var(--text-primary);
+    line-height: 1.35;
+    margin-top: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    transition: all 0.25s ease;
+}
+
+.bot-match-banner.active-match {
+    background: rgba(59, 130, 246, 0.12);
+    border-color: rgba(59, 130, 246, 0.4);
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.15);
+}
+
+.bot-match-banner.bot-thinking {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.4);
+    color: var(--accent-amber);
+}
+
+.turn-pulse {
+    display: inline-block;
+    animation: turnPulseAnim 1.2s infinite ease-in-out;
+}
+
+@keyframes turnPulseAnim {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.7; }
+}
+
+/* Road Map Carousel & Grid Track */
+.bot-roadmap-section {
+    background: rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+    padding: 0.5rem;
+}
+
+.bot-roadmap-track {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 0.45rem;
+    max-height: 220px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.bot-roadmap-track::-webkit-scrollbar {
+    width: 4px;
+}
+
+.bot-roadmap-track::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.bot-roadmap-track::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+}
+
+.bot-card-tile {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-sm);
+    padding: 0.45rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    user-select: none;
+}
+
+.bot-card-tile:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.bot-card-tile.active {
+    border-color: var(--accent-emerald);
+    background: rgba(16, 185, 129, 0.1);
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+}
+
+.bot-card-tile.defeated {
+    border-color: rgba(245, 158, 11, 0.4);
+}
+
+.bot-card-tile.locked {
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: grayscale(0.85);
+}
+
+.bot-card-tile.locked:hover {
+    transform: none;
+    border-color: var(--border-glass);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.bot-tile-avatar-wrap {
+    position: relative;
+    width: 34px;
+    height: 34px;
+    margin-bottom: 0.25rem;
+}
+
+.bot-tile-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1.5px solid rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+}
+
+.bot-tile-badge {
+    position: absolute;
+    bottom: -3px;
+    right: -4px;
+    font-size: 0.62rem;
+    line-height: 1;
+    background: #0f172a;
+    border-radius: 50%;
+    padding: 1px;
+}
+
+.bot-tile-name {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+    line-height: 1.2;
+}
+
+.bot-tile-meta {
+    font-size: 0.60rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.bot-tile-style {
+    font-size: 0.58rem;
+    color: #60a5fa;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+}
+
+
 
